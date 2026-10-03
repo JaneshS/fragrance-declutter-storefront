@@ -1,0 +1,4 @@
+# No build step: Netlify serves index.html as-is.
+[build]
+  publish = "."
+  command = ""

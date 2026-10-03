@@ -1,0 +1,1481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fragrance Declutter</title>
+<!--
+  Fragrance Declutter Storefront · MIT License
+  ─────────────────────────────────────────────
+  The ONLY line you need to change is DATA_URL below:
+  your Apps Script web app link (it ends in /exec), between the quotes.
+-->
+<script>
+  const DATA_URL = 'https://script.google.com/macros/s/AKfycbyAwLbsIOrQMcKHpJpaB7pZXohNqXnCUd_CKH3RgS-nqiZidaafqjmNd3zsev-K0rJh/exec';
+  const REPO_URL = 'https://github.com/JaneshS/fragrance-declutter-storefront'; // footer credit link
+
+  // Apply the saved or system theme before the page paints (avoids a flash).
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('fd-theme'); } catch (e) {}
+    var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #EDF0F3; --card: #FFFFFF; --text: #1B2430; --muted: #556070; --line: #C5CDD8;
+  --subtle: #E3E8EE; --accent: #2B59C3; --on-accent: #FFFFFF; --link: #2B59C3;
+  --strong: #1B2430; --on-strong: #FFFFFF; --banner-bg: #DCE6F8; --banner-text: #1E3A78;
+  --shadow: 0 1px 2px rgba(27,36,48,0.08); --pop-shadow: 0 8px 24px rgba(10,14,20,0.18);
+  --send: #1D7A44; --cart-bg: #1B2430; --cart-muted: #C9D2DF;
+  --t-fresh-bg: #D6E7FB; --t-fresh: #154A86; --t-gourmand-bg: #F6E3CC; --t-gourmand: #6B3D0A;
+  --t-aromatic-bg: #DDEFD9; --t-aromatic: #255C1E; --t-woody-bg: #E6DED6; --t-woody: #4A3726;
+  --t-floral-bg: #F6DCE8; --t-floral: #7A1F4B;
+  --head: 'Outfit', system-ui, sans-serif; --ui: 'DM Sans', system-ui, sans-serif;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: #11151B; --card: #1B212A; --text: #E8EDF3; --muted: #9AA6B5; --line: #364152;
+  --subtle: #252D38; --accent: #86A8F2; --on-accent: #0E1420; --link: #86A8F2;
+  --strong: #E8EDF3; --on-strong: #11151B; --banner-bg: #1D2B47; --banner-text: #C9D7F6;
+  --shadow: none; --pop-shadow: 0 8px 24px rgba(0,0,0,0.5); --cart-bg: #252D38; --cart-muted: #B4BFCD;
+  --t-fresh-bg: #16304F; --t-fresh: #B9D6F7; --t-gourmand-bg: #4A3416; --t-gourmand: #F3D3A8;
+  --t-aromatic-bg: #1E3A1C; --t-aromatic: #BFE3B8; --t-woody-bg: #3A2E24; --t-woody: #E2D3C3;
+  --t-floral-bg: #4A1E33; --t-floral: #F5C6DC;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text); font-family: var(--ui);
+  font-size: 14px; line-height: 1.4;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg { flex: none; }
+
+.wrap { max-width: 560px; margin: 0 auto; padding-top: env(safe-area-inset-top, 0px); }
+
+/* Header */
+.top {
+  padding: 20px 16px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center;
+  grid-template-areas: "brand actions" "banner banner" "search search";
+}
+.brand-block { grid-area: brand; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.store-name { font-family: var(--head); font-weight: 700; font-size: 26px; line-height: 1.05; margin: 0; }
+.tagline { font-size: 13px; color: var(--muted); margin: 0; }
+.head-actions { grid-area: actions; display: flex; gap: 8px; flex: none; }
+.btn-label { display: none; order: 2; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 14px; border: 0; background: var(--card); color: var(--text);
+  display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: var(--shadow); text-decoration: none;
+}
+.icon-btn.wa { color: var(--accent); }
+[data-theme="light"] .icon-sun, [data-theme="dark"] .icon-moon { display: none; }
+
+.vouch-pill {
+  position: relative; align-self: flex-start; margin-top: 6px; height: 30px; padding: 0 10px; border-radius: 15px; border: 0;
+  background: var(--card); color: var(--link); box-shadow: var(--shadow); font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.vouch-pill::after { content: ''; position: absolute; inset: -7px -2px; }
+.vouch-pill[hidden] { display: none; }
+
+/* Vouches gallery */
+.vouches {
+  position: fixed; inset: 0; z-index: 90; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.vg-head {
+  position: sticky; top: 0; z-index: 1; background: var(--bg); display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 16px; max-width: 1240px; margin: 0 auto;
+}
+.vg-title h2 { font-family: var(--head); font-weight: 700; font-size: 22px; margin: 0; }
+.vg-title p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.vg-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 16px 24px; max-width: 1240px; margin: 0 auto;
+}
+.vg-item { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vg-item button { height: 260px; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--subtle); box-shadow: var(--shadow); }
+.vg-item img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.vg-cap { font-size: 12px; color: var(--muted); line-height: 1.4; margin: 0; padding: 0 2px; }
+.v-caption { font-size: 13px; color: #C3CBD6; text-align: center; max-width: 560px; }
+@media (min-width: 700px) { .vg-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; } .vg-head { padding: 24px 32px 16px; } .vg-item button { height: 320px; } .vg-grid { padding: 0 32px 32px; } }
+
+.banner { grid-area: banner; margin: 12px 0 0; background: var(--banner-bg); color: var(--banner-text); border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 500; }
+
+/* Search */
+.search { grid-area: search; padding: 12px 0 0; position: relative; }
+.search-box {
+  display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 14px;
+  height: 46px; padding: 0 14px; box-shadow: var(--shadow); color: var(--muted);
+}
+.search-box:focus-within { outline: 2px solid var(--accent); outline-offset: 0; }
+.search-box input { border: 0; outline: 0; flex: 1; min-width: 0; font-size: 16px; background: transparent; color: var(--text); }
+.search-box input::placeholder { color: #8792A2; }
+.search-box input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.clear-btn { border: 0; background: transparent; color: var(--muted); width: 32px; height: 32px; margin-right: -8px; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 8px; }
+.suggest {
+  position: absolute; left: 0; right: 0; top: 64px; z-index: 20; background: var(--card); border-radius: 14px;
+  border: 1px solid var(--line); box-shadow: var(--pop-shadow); padding: 6px; margin: 0; list-style: none;
+}
+.suggest button {
+  width: 100%; min-height: 48px; border: 0; background: transparent; border-radius: 10px; padding: 6px 10px; text-align: left;
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+}
+.suggest button[aria-selected="true"], .suggest button:hover { background: var(--subtle); }
+.suggest .s-title { font-weight: 600; font-size: 14px; }
+.suggest .s-sub { font-size: 12px; color: var(--muted); }
+
+/* Browse by */
+.browse { padding: 14px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.label-cap { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.cats { display: flex; gap: 6px; }
+.cat {
+  min-width: 0; height: 52px; padding: 0 6px; border-radius: 12px; border: 0; background: var(--card);
+  font-size: 13px; font-weight: 600; line-height: 1.2; box-shadow: var(--shadow);
+}
+.cat[data-cat="all"] { flex: 0 0 48px; }
+.cat[data-cat="Indian houses"] { flex: 1 1 0; }
+.cat[data-cat="Middle Eastern houses"] { flex: 1.25 1 0; }
+.cat[data-cat="Designer/Niche"] { flex: 1.1 1 0; }
+.cat[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); box-shadow: none; }
+
+/* View toggle */
+.views { padding: 12px 16px 0; display: flex; gap: 8px; }
+.view-btn {
+  flex: 1; height: 44px; border-radius: 12px; border: 0; background: var(--card); box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 14px;
+}
+.view-btn[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); box-shadow: none; }
+.count-badge { background: var(--accent); color: var(--on-accent); font-size: 11px; border-radius: 10px; padding: 1px 7px; }
+.view-btn[aria-pressed="true"] .count-badge { background: var(--on-strong); color: var(--strong); }
+.hint { padding: 6px 16px 0; font-size: 12px; color: var(--muted); margin: 0; }
+
+/* Filters */
+.filters { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.f-row { display: flex; gap: 8px; align-items: center; }
+.pill {
+  position: relative; height: 40px; padding: 0 14px; border-radius: 20px; border: 0; background: var(--card);
+  font-size: 13px; font-weight: 600; box-shadow: var(--shadow);
+}
+.pill::after { content: ''; position: absolute; inset: -2px 0; }
+.pill.new { flex: none; padding: 0 14px; }
+.pill.new[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.seg { flex: 1; display: flex; background: var(--card); border-radius: 20px; padding: 3px; box-shadow: var(--shadow); }
+.seg.inset { background: var(--subtle); box-shadow: none; }
+.seg button {
+  position: relative; flex: 1; height: 34px; padding: 0 8px; border-radius: 17px; border: 0; background: transparent;
+  font-size: 13px; font-weight: 600;
+}
+.seg button::after { content: ''; position: absolute; inset: -5px 0; }
+.seg button[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); }
+.select-pill { position: relative; flex: 1; min-width: 0; }
+.select-pill select {
+  width: 100%; height: 40px; padding: 0 30px 0 14px; border-radius: 20px; border: 0; background: var(--card);
+  font-size: 13px; font-weight: 600; box-shadow: var(--shadow); appearance: none; -webkit-appearance: none;
+  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+.select-pill select.active { background: var(--strong); color: var(--on-strong); }
+.select-pill svg { position: absolute; right: 12px; top: 13px; pointer-events: none; color: var(--muted); }
+.select-pill select.active + svg { color: var(--on-strong); }
+.more-btn {
+  flex: none; height: 40px; padding: 0 12px; border-radius: 20px; border: 1.5px solid var(--line); background: transparent;
+  font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.more-btn[aria-expanded="true"] { background: var(--strong); color: var(--on-strong); border-color: var(--strong); }
+.more-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.adv { display: none; background: var(--card); border-radius: 14px; padding: 12px; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+.filters.open .adv { display: flex; }
+@media (max-width: 1023px) {
+  .f-row .seg button { padding: 0 6px; }
+  .pill.new { padding: 0 12px; }
+  .more-btn { padding: 0 10px; gap: 2px; }
+  .cart-dock .notice { box-shadow: var(--pop-shadow); }
+}
+.adv-more { display: flex; flex-direction: column; gap: 10px; }
+.bp-row { display: flex; gap: 8px; }
+.adv .select-pill select { background: var(--subtle); box-shadow: none; }
+.adv .select-pill select.active { background: var(--strong); }
+.adv-group { display: flex; flex-direction: column; gap: 6px; border: 0; margin: 0; padding: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  position: relative; height: 38px; padding: 0 14px; border-radius: 19px; border: 1.5px solid var(--line);
+  background: transparent; font-size: 13px; font-weight: 600;
+}
+.chip::after { content: ''; position: absolute; inset: -3px 0; }
+.chip[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); border-color: var(--strong); }
+
+.result-bar { padding: 14px 16px 6px; display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+
+/* Results */
+.results { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.results.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.panel-msg { background: var(--card); border-radius: 14px; padding: 20px; font-size: 14px; color: var(--muted); text-align: center; grid-column: 1 / -1; }
+.panel-msg button { margin-top: 10px; height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: var(--strong); color: var(--on-strong); font-weight: 600; }
+
+.tag { border-radius: 6px; padding: 0 6px; font-size: 10px; font-weight: 700; background: var(--subtle); color: var(--text); white-space: nowrap; }
+.tag.fresh { background: var(--t-fresh-bg); color: var(--t-fresh); }
+.tag.gourmand { background: var(--t-gourmand-bg); color: var(--t-gourmand); }
+.tag.aromatic { background: var(--t-aromatic-bg); color: var(--t-aromatic); }
+.tag.woody { background: var(--t-woody-bg); color: var(--t-woody); }
+.tag.floral { background: var(--t-floral-bg); color: var(--t-floral); }
+.badge-new { background: var(--strong); color: var(--on-strong); border-radius: 6px; padding: 0 6px; font-size: 10px; font-weight: 700; }
+
+.add {
+  height: 44px; min-width: 60px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 13px; flex: none;
+  border: 1.5px solid var(--line); background: var(--card);
+}
+.add[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+
+/* Table rows (mobile) */
+.row { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.row-main { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 0; }
+.row-toggle {
+  flex: 1; min-width: 0; border: 0; background: transparent; padding: 0 0 0 14px; text-align: left;
+  display: flex; align-items: center; gap: 8px; min-height: 44px;
+}
+.row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.row-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.row-name { font-family: var(--head); font-weight: 600; font-size: 16px; line-height: 1.2; }
+.row-sub { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row-sub .fill { color: var(--text); font-weight: 500; }
+.mini { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; color: var(--link); }
+.price { font-family: var(--head); font-weight: 600; font-size: 16px; white-space: nowrap; }
+.chev { color: var(--muted); transition: transform 0.15s; }
+.row-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.row-detail { border-top: 1px solid var(--subtle); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.notes p:not(.label-cap) { margin: 4px 0 0; font-size: 14px; line-height: 1.5; white-space: pre-line; }
+.links { display: flex; flex-direction: column; gap: 2px; }
+.frag-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-decoration: none; min-height: 36px; }
+.frag-link:hover { text-decoration: underline; }
+.strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -14px; padding: 0 14px 4px; scrollbar-width: thin; }
+.strip-photo {
+  position: relative; flex: 0 0 250px; height: 220px; scroll-snap-align: start; border-radius: 12px; border: 0; padding: 0;
+  background: var(--subtle); overflow: hidden;
+}
+.strip-photo img, .card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zoom-chip {
+  position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 4px; background: rgba(17,21,27,0.82);
+  color: #FFFFFF; border-radius: 8px; padding: 3px 8px; font-size: 11px; font-weight: 600;
+}
+.no-photos { font-size: 12px; color: var(--muted); margin: 0; }
+
+/* Photo cards */
+.card { background: var(--card); border-radius: 16px; padding: 8px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--shadow); min-width: 0; }
+.card-photo { position: relative; height: 170px; border-radius: 12px; background: var(--subtle); border: 0; padding: 0; overflow: hidden; width: 100%; }
+.card-photo .counter { position: absolute; right: 8px; bottom: 8px; background: rgba(17,21,27,0.82); color: #FFFFFF; border-radius: 8px; font-size: 11px; padding: 1px 7px; }
+.card-photo .badge-new { position: absolute; right: 8px; top: 8px; }
+.card-empty {
+  height: 170px; border-radius: 12px; border: 1.5px dashed var(--line); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 12px;
+}
+.card-body { padding: 2px 4px 0; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.card-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+.card-name { font-family: var(--head); font-weight: 600; font-size: 15px; line-height: 1.2; overflow-wrap: anywhere; }
+.card-lineage { font-size: 11px; color: var(--muted); }
+.card-fill { font-size: 12px; font-weight: 500; }
+.card-note {
+  margin: 2px 0 0; font-size: 12px; line-height: 1.45; font-style: italic; color: var(--muted);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card .frag-link { font-size: 12px; min-height: 32px; gap: 4px; }
+.card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-left: 4px; }
+
+/* Footer */
+.site-foot { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; line-height: 1.5; color: var(--muted); border-top: 1px solid var(--line); }
+.site-foot p { margin: 0; }
+
+/* Photo viewer */
+.viewer {
+  position: fixed; inset: 0; z-index: 100; background: #0B0E12; color: #FFFFFF; display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.viewer[hidden] { display: none; }
+.v-head { padding: 16px 16px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.v-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.v-brand { font-size: 12px; color: #A9B3C1; }
+.v-name { font-family: var(--head); font-weight: 600; font-size: 18px; }
+.v-close { width: 44px; height: 44px; border-radius: 22px; border: 0; background: #1E242C; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: none; }
+.v-stage { flex: 1; position: relative; overflow: hidden; background: #151A20; touch-action: none; user-select: none; -webkit-user-select: none; }
+.v-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 50%; will-change: transform; -webkit-user-drag: none; }
+.v-hint { position: absolute; left: 0; right: 0; bottom: 16px; text-align: center; font-size: 12px; color: #C3CBD6; pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.v-foot { padding: 14px 16px 22px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.v-count { font-size: 13px; color: #C3CBD6; }
+.v-thumbs { display: flex; gap: 10px; overflow-x: auto; max-width: 100%; padding: 2px; }
+.v-thumbs button { width: 64px; height: 64px; flex: none; border-radius: 10px; border: 2px solid transparent; background: #1E242C; padding: 0; overflow: hidden; }
+.v-thumbs button[aria-current="true"] { border-color: #FFFFFF; }
+.v-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Cart panel (desktop) */
+.layout { display: block; }
+.cart-panel { display: none; }
+.cart-title { font-family: var(--head); font-weight: 700; font-size: 20px; margin: 0; outline: none; }
+.cart-list { display: flex; flex-direction: column; gap: 10px; }
+.cart-empty { font-size: 14px; color: var(--muted); margin: 0; }
+.cart-line { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--subtle); }
+.cart-line .cl-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cart-line .cl-brand { font-size: 12px; color: var(--muted); }
+.cart-line .cl-name { font-weight: 600; font-size: 14px; }
+.cart-line .cl-price { font-weight: 600; font-size: 14px; white-space: nowrap; }
+.remove-btn { position: relative; width: 36px; height: 36px; border-radius: 10px; border: 0; background: var(--subtle); display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+.remove-btn::after { content: ''; position: absolute; inset: -4px; }
+.cart-sums { display: flex; flex-direction: column; gap: 6px; }
+.sum-row { display: flex; justify-content: space-between; font-size: 14px; }
+.sum-row.discount { color: var(--send); font-weight: 600; }
+[data-theme="dark"] .sum-row.discount { color: #7FD0A0; }
+.cart-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; }
+.cart-warn { background: var(--banner-bg); color: var(--banner-text); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; }
+.send-btn {
+  height: 50px; border-radius: 14px; background: var(--send); color: #FFFFFF; border: 0; font-weight: 700; font-size: 15px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; flex: none;
+}
+.send-btn:disabled { opacity: 0.7; cursor: progress; }
+.send-help { font-size: 12px; line-height: 1.5; color: var(--muted); margin: 0; }
+.notice {
+  display: flex; align-items: flex-start; gap: 8px; background: var(--card); color: var(--text); border: 1.5px solid var(--line);
+  border-radius: 12px; padding: 10px 6px 10px 12px; font-size: 13px; line-height: 1.4;
+}
+.notice p { margin: 0; flex: 1; }
+.notice button { border: 0; background: transparent; width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 8px; color: var(--muted); margin-top: -6px; }
+
+/* Cart bar (phones) */
+.cart-dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 8px; max-width: 560px; margin: 0 auto; pointer-events: none;
+}
+.cart-dock > * { pointer-events: auto; }
+.cart-bar {
+  background: var(--cart-bg); color: #FFFFFF; border-radius: 18px; padding: 12px 12px 12px 16px;
+  display: flex; align-items: center; gap: 12px; box-shadow: 0 6px 20px rgba(10,14,20,0.25);
+}
+.cart-bar .cb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cart-bar .cb-sum { font-weight: 700; font-size: 14px; }
+.cart-bar .cb-note { font-size: 12px; color: var(--cart-muted); }
+.cart-bar .send-btn { height: 46px; font-size: 14px; padding: 0 14px; }
+body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+
+/* Desktop table */
+.table-box { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); overflow-x: auto; }
+.ptable { width: 100%; min-width: 760px; border-collapse: collapse; }
+.ptable th {
+  text-align: left; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.ptable td { padding: 7px 12px; border-bottom: 1px solid var(--subtle); vertical-align: middle; font-size: 14px; }
+.ptable th:first-child, .ptable td:first-child { padding-left: 16px; }
+.ptable th:last-child, .ptable td:last-child { padding-right: 16px; text-align: right; }
+.ptable .num { text-align: right; white-space: nowrap; }
+.ptable .c-fill { width: 110px; } .ptable .c-det { width: 120px; } .ptable .c-price { width: 90px; } .ptable .c-add { width: 92px; }
+.prow { cursor: pointer; }
+.prow:hover td { background: var(--subtle); }
+.prow.open td { border-bottom-color: transparent; }
+.ptable .row-toggle { padding: 0; gap: 10px; min-height: 40px; flex: none; width: 100%; }
+.ptable .row-name { font-size: 15px; }
+.ptable .chev { transform: rotate(-90deg); }
+.ptable .row-toggle[aria-expanded="true"] .chev { transform: rotate(0deg); }
+.td-muted { color: var(--muted); }
+.td-fill { font-weight: 500; white-space: nowrap; }
+.details { display: flex; gap: 10px; font-size: 13px; }
+.ptable .add { height: 40px; position: relative; }
+.ptable .add::after { content: ''; position: absolute; inset: -2px 0; }
+.pdetail td { padding: 2px 16px 16px 42px; }
+.d-wrap { display: flex; flex-wrap: wrap; gap: 20px; text-align: left; }
+.d-left { flex: 1 1 260px; max-width: 440px; display: flex; flex-direction: column; gap: 10px; }
+.d-left .notes p:not(.label-cap) { font-size: 15px; line-height: 1.55; }
+.d-right { flex: 2 1 400px; min-width: 0; }
+.d-right .strip { margin: 0; padding: 0 0 4px; }
+.d-right .strip-photo { flex: 0 0 200px; height: 220px; }
+
+@media (min-width: 1024px) {
+  .wrap { max-width: 1240px; padding: 24px 32px 32px; }
+  .top {
+    padding: 0; column-gap: 24px; grid-template-columns: auto minmax(280px, 1fr) auto;
+    grid-template-areas: "brand search actions" "banner banner banner";
+  }
+  .store-name { font-size: 28px; }
+  .search { padding: 0; }
+  .suggest { top: 54px; }
+  .banner { margin-top: 14px; padding: 9px 14px; font-size: 14px; }
+  .icon-btn { width: auto; padding: 0 14px; gap: 8px; font-weight: 600; font-size: 14px; }
+  .btn-label { display: inline; }
+
+  .controls {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 10px;
+    align-items: center; padding-top: 16px;
+  }
+  .browse { flex-direction: row; align-items: center; gap: 10px; padding: 0; }
+  .cat { flex: none !important; height: 40px; padding: 0 16px; border-radius: 20px; }
+  .views { padding: 4px; gap: 4px; background: var(--card); border-radius: 14px; box-shadow: var(--shadow); }
+  .view-btn { flex: none; height: 36px; padding: 0 16px; border-radius: 10px; box-shadow: none; background: transparent; }
+  .hint { display: none; }
+  .filters { padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .f-row { display: contents; }
+  .seg { flex: none; }
+  .seg button { flex: none; padding: 0 14px; }
+  .adv, .filters.open .adv, .bp-group, .bp-row { display: contents; }
+  .bp-label { display: none; }
+  .select-pill { flex: 0 0 170px; order: 1; }
+  .adv .select-pill select { background: var(--card); box-shadow: var(--shadow); }
+  .adv .select-pill select.active { background: var(--strong); }
+  .more-btn { padding: 0 16px; order: 2; }
+  .adv-more {
+    display: none; order: 3; flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+    padding: 8px 12px; background: var(--card); border-radius: 14px; box-shadow: var(--shadow);
+  }
+  .filters.open .adv-more { display: flex; }
+  .adv-group { flex-direction: row; align-items: center; gap: 10px; }
+  .adv-more .seg { min-width: 260px; }
+  .result-bar { padding: 0; gap: 12px; align-self: start; padding-top: 12px; font-size: 13px; }
+  .views { justify-self: end; }
+  .browse .label-cap { white-space: nowrap; }
+  .ptable th:first-child { width: 32%; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; margin-top: 12px; }
+  .results { padding: 0; }
+  .results.grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .cart-panel {
+    display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto;
+    background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 18px;
+  }
+  .site-foot { padding: 18px 0 0; margin-top: 24px; font-size: 13px; }
+  .cart-dock { display: none; }
+  body.has-cart { padding-bottom: 0; }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 280px; }
+  .select-pill { flex-basis: 140px; }
+  .browse .label-cap { display: none; }
+  .ptable { min-width: 700px; }
+}
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+@media (min-width: 600px) and (max-width: 1023px) { .results.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand-block">
+      <h1 class="store-name" id="storeName">&nbsp;</h1>
+      <p class="tagline" id="tagline" hidden></p>
+      <button class="vouch-pill" id="vouchBtn" type="button" data-action="vopen" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+        See vouches
+      </button>
+    </div>
+    <div class="head-actions">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode">
+        <span class="btn-label" id="themeText" aria-hidden="true">Dark mode</span>
+        <svg class="icon-moon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+        <svg class="icon-sun" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a class="icon-btn wa" id="askBtn" hidden target="_blank" rel="noopener" aria-label="Ask a question on WhatsApp" title="Ask a question">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg>
+        <span class="btn-label" aria-hidden="true">Ask a question</span>
+      </a>
+    </div>
+
+    <div class="banner" id="banner" role="note" hidden></div>
+
+  <div class="search" id="search">
+    <label class="search-box">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <span class="sr-only">Search the collection</span>
+      <input id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Search brand, name or inspiration"
+        role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list">
+      <button class="clear-btn" id="clearQ" type="button" aria-label="Clear search" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </label>
+    <ul class="suggest" id="suggest" role="listbox" aria-label="Suggestions" hidden></ul>
+  </div>
+  </header>
+
+  <div class="controls">
+  <nav class="browse" aria-labelledby="browseLabel">
+    <p class="label-cap" id="browseLabel">Browse by</p>
+    <div class="cats" id="cats">
+      <button class="cat" type="button" data-cat="all" aria-pressed="true">All</button>
+      <button class="cat" type="button" data-cat="Indian houses" aria-pressed="false">Indian houses</button>
+      <button class="cat" type="button" data-cat="Middle Eastern houses" aria-pressed="false">Middle Eastern houses</button>
+      <button class="cat" type="button" data-cat="Designer/Niche" aria-pressed="false">Designer / Niche</button>
+    </div>
+  </nav>
+
+  <div class="views" role="group" aria-label="View">
+    <button class="view-btn" type="button" data-view="table" aria-pressed="true">Table</button>
+    <button class="view-btn" type="button" data-view="photos" aria-pressed="false">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Photos <span class="count-badge" id="photoCount" aria-label="items with photos">0</span>
+    </button>
+  </div>
+  <p class="hint" id="viewHint"></p>
+
+  <div class="filters" id="filters">
+    <div class="f-row">
+      <button class="pill new" id="newBtn" type="button" aria-pressed="false">New</button>
+      <div class="seg" role="group" aria-label="Decant or bottle" id="typeSeg">
+        <button type="button" data-type="all" aria-pressed="true">All</button>
+        <button type="button" data-type="decant" aria-pressed="false">Decants</button>
+        <button type="button" data-type="bottle" aria-pressed="false">Bottles</button>
+      </div>
+      <button class="more-btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="adv">
+        <span id="moreLabel">Filters</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+    <div class="adv" id="adv">
+      <div class="adv-group bp-group">
+        <p class="label-cap bp-label">Brand and price</p>
+        <div class="bp-row">
+      <div class="select-pill">
+        <select id="brandSel" aria-label="Brand"><option value="">Brand</option></select>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="select-pill">
+        <select id="priceSel" aria-label="Price"></select>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+        </div>
+      </div>
+      <div class="adv-more">
+      <div class="adv-group">
+        <p class="label-cap" id="linLabel">Original or inspired</p>
+        <div class="seg inset" role="group" aria-labelledby="linLabel" id="linSeg">
+          <button type="button" data-lin="all" aria-pressed="true">All</button>
+          <button type="button" data-lin="og" aria-pressed="false">Originals</button>
+          <button type="button" data-lin="insp" aria-pressed="false">Inspired</button>
+        </div>
+      </div>
+      <div class="adv-group" id="famGroup">
+        <p class="label-cap" id="famLabel">Scent family</p>
+        <div class="chips" role="group" aria-labelledby="famLabel" id="famChips"></div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-bar"><span id="resultCount" aria-live="polite"></span><span>Fill levels are approximate</span></div>
+  </div>
+
+  <div class="layout">
+    <main class="results" id="results"><div class="panel-msg">Loading the collection…</div></main>
+    <aside class="cart-panel" id="cartPanel" aria-labelledby="cartTitle">
+      <h2 class="cart-title" id="cartTitle" tabindex="-1">Your cart</h2>
+      <div class="notice" id="panelNotice" role="status" hidden><p></p><button type="button" data-action="dismiss" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="cart-list" id="cartList"></div>
+      <div class="cart-sums" id="cartSums"></div>
+      <div class="cart-warn" id="cartWarn" hidden></div>
+      <button class="send-btn" type="button" data-action="send" id="panelSend">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg>
+        <span class="send-label">Send order on WhatsApp</span>
+      </button>
+      <p class="send-help">Opens WhatsApp with your list ready to send. Payment and shipping are arranged in the chat.</p>
+    </aside>
+  </div>
+
+  <footer class="site-foot">
+    <p>Fill levels are approximate and estimated by eye — photos show the actual bottle.</p>
+    <p id="deliveryNote" hidden></p>
+    <p id="credit" hidden></p>
+  </footer>
+</div>
+
+<div class="cart-dock" id="cartDock" hidden>
+  <div class="notice" id="barNotice" role="status" hidden><p></p><button type="button" data-action="dismiss" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="cart-bar" id="cartBar">
+    <div class="cb-info"><span class="cb-sum" id="cbSum"></span><span class="cb-note" id="cbNote"></span></div>
+    <button class="send-btn" type="button" data-action="send">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg>
+      <span class="send-label">Send on WhatsApp</span>
+    </button>
+  </div>
+</div>
+
+<div class="vouches" id="vouches" role="dialog" aria-modal="true" aria-labelledby="vouchTitle" hidden>
+  <div class="vg-head">
+    <div class="vg-title">
+      <h2 id="vouchTitle">Vouches</h2>
+      <p>Messages from buyers after their orders arrived. Tap one to read it full size.</p>
+    </div>
+    <button class="icon-btn" id="vgClose" type="button" data-action="vclose" aria-label="Close vouches">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="vg-grid" id="vgGrid"></div>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="vName" hidden>
+  <div class="v-head">
+    <div class="v-title"><span class="v-brand" id="vBrand"></span><span class="v-name" id="vName"></span></div>
+    <button class="v-close" id="vClose" type="button" aria-label="Close photo viewer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="v-stage" id="vStage">
+    <img id="vImg" alt="" referrerpolicy="no-referrer" draggable="false">
+    <span class="v-hint" id="vHint">Pinch or double-tap to zoom · swipe for next</span>
+  </div>
+  <div class="v-foot">
+    <span class="v-count" id="vCount" aria-live="polite"></span>
+    <span class="v-caption" id="vCaption" hidden></span>
+    <div class="v-thumbs" id="vThumbs"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Constants ---------- */
+  var CATS = ['Indian houses', 'Middle Eastern houses', 'Designer/Niche'];
+  var DEFAULT_FAMILIES = ['Fresh', 'Gourmand', 'Aromatic', 'Woody', 'Floral'];
+  var PRICES = [
+    { id: '', label: 'Price', test: function () { return true; } },
+    { id: 'u200', label: 'Under ₹200', test: function (p) { return p < 200; } },
+    { id: '200-500', label: '₹200 – ₹500', test: function (p) { return p >= 200 && p <= 500; } },
+    { id: '500-1000', label: '₹500 – ₹1,000', test: function (p) { return p > 500 && p <= 1000; } },
+    { id: 'o1000', label: 'Over ₹1,000', test: function (p) { return p > 1000; } }
+  ];
+  var HINTS = {
+    table: 'Tap any perfume to see my notes and photos, or switch to Photos.',
+    photos: 'Tap a photo to see it full size and zoom in.'
+  };
+  var ICON = {
+    camera: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+    cameraLg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+    note: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v12H9l-4 4z"/></svg>',
+    chev: '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+    ext: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>',
+    zoom: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M11 8.5v5M8.5 11h5"/></svg>'
+  };
+
+  var DESK = window.matchMedia('(min-width: 1024px)');
+
+  /* ---------- Small helpers ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  function store(key, val) {
+    try {
+      if (val === undefined) return localStorage.getItem(key);
+      localStorage.setItem(key, val);
+    } catch (e) { return null; }
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function inr(n) { return '₹' + Number(n || 0).toLocaleString('en-IN'); }
+  function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : null; }
+
+  /* ---------- State ---------- */
+  var S = {
+    data: null, items: [], settings: {},
+    q: '', sugIndex: -1, sugList: [],
+    cat: 'all', view: store('fd-view') === 'photos' ? 'photos' : 'table',
+    newOnly: false, type: 'all', brand: '', price: '', lin: 'all', fam: '',
+    advOpen: false, expanded: null,
+    cart: loadCart()
+  };
+  function loadCart() {
+    try { var c = JSON.parse(store('fd-cart') || '[]'); return Array.isArray(c) ? c : []; } catch (e) { return []; }
+  }
+  function saveCart() { store('fd-cart', JSON.stringify(S.cart)); }
+  function inCart(id) { return S.cart.indexOf(id) !== -1; }
+
+  /* ---------- Item display helpers ---------- */
+  function fillText(it) {
+    var r = it.remaining, s = it.sizeMl;
+    if (r != null && s != null) return r + ' / ' + s + ' ml';
+    if (s != null) return s + ' ml';
+    if (r != null) return typeof r === 'number' ? r + ' ml' : String(r);
+    return '';
+  }
+  function isNew(it) {
+    if (!it.dateListed) return false;
+    var m = String(it.dateListed).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return false;
+    var listed = new Date(+m[1], +m[2] - 1, +m[3]);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var days = Math.round((today - listed) / 86400000);
+    var limit = S.settings.newBadgeDays != null ? S.settings.newBadgeDays : 14;
+    return days >= 0 && days <= limit;
+  }
+  function lineage(it) { return it.inspiredBy ? '≈ ' + it.inspiredBy : 'Original'; }
+  function tagHtml(it) {
+    if (!it.scentFamily) return '';
+    return '<span class="tag ' + esc(norm(it.scentFamily)) + '">' + esc(it.scentFamily) + '</span>';
+  }
+  function fragLinks(it) {
+    var out = [];
+    var own = safeUrl(it.fragranticaUrl), insp = safeUrl(it.inspirationFragranticaUrl);
+    if (own) out.push({ url: own, label: it.name + ' on Fragrantica', short: 'On Fragrantica' });
+    if (insp && it.inspiredBy) out.push({ url: insp, label: it.inspiredBy + ' (the inspiration) on Fragrantica', short: 'Inspiration on Fragrantica' });
+    return out;
+  }
+  function searchText(it) { return (it.brand + ' ' + it.name + ' ' + (it.inspiredBy || '')).toLowerCase(); }
+  function matchesQuery(it, q) {
+    var words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    var hay = searchText(it);
+    return words.every(function (w) { return hay.indexOf(w) !== -1; });
+  }
+
+  /* ---------- Filtering ---------- */
+  function visibleItems() {
+    var priceTest = (PRICES.filter(function (p) { return p.id === S.price; })[0] || PRICES[0]).test;
+    return S.items.filter(function (it) {
+      if (S.cat !== 'all' && norm(it.category) !== norm(S.cat)) return false;
+      if (S.newOnly && !isNew(it)) return false;
+      if (S.type !== 'all' && norm(it.type) !== S.type) return false;
+      if (S.brand && it.brand !== S.brand) return false;
+      if (!priceTest(it.price || 0)) return false;
+      if (S.lin === 'og' && it.inspiredBy) return false;
+      if (S.lin === 'insp' && !it.inspiredBy) return false;
+      if (S.fam && norm(it.scentFamily) !== norm(S.fam)) return false;
+      return matchesQuery(it, S.q);
+    });
+  }
+
+  /* ---------- Rendering: results ---------- */
+  function addBtn(it) {
+    var added = inCart(it.id);
+    var label = (added ? 'Remove ' : 'Add ') + it.brand + ' ' + it.name + (added ? ' from cart' : ' to cart');
+    return '<button class="add" type="button" data-action="cart" data-id="' + esc(it.id) + '" data-fkey="cart-' + esc(it.id) +
+      '" aria-pressed="' + added + '" aria-label="' + esc(label) + '">' + (added ? 'Added' : 'Add') + '</button>';
+  }
+  function linksHtml(it, short) {
+    return fragLinks(it).map(function (l) {
+      return '<a class="frag-link" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + ICON.ext + esc(short ? l.short : l.label) + '</a>';
+    }).join('');
+  }
+
+  function rowHtml(it) {
+    var exp = S.expanded === it.id;
+    var photos = it.photos || [];
+    var fill = fillText(it);
+    var h = '<article class="row">';
+    h += '<div class="row-main">';
+    h += '<button class="row-toggle" type="button" data-action="expand" data-id="' + esc(it.id) + '" data-fkey="exp-' + esc(it.id) +
+      '" aria-expanded="' + exp + '" aria-controls="d-' + esc(it.id) + '">';
+    h += '<div class="row-info">';
+    h += '<div class="row-meta">' + esc(it.brand) + (isNew(it) ? '<span class="badge-new">NEW</span>' : '') + tagHtml(it) + '</div>';
+    h += '<div class="row-name">' + esc(it.name) + '</div>';
+    h += '<div class="row-sub"><span>' + esc(lineage(it)) + '</span>';
+    if (fill) h += '<span class="fill">' + esc(fill) + '</span>';
+    if (photos.length) h += '<span class="mini" aria-label="' + photos.length + ' photos">' + ICON.camera + photos.length + '</span>';
+    if (it.notes) h += '<span class="mini">' + ICON.note + 'Notes</span>';
+    h += '</div></div>';
+    h += '<span class="price">' + inr(it.price) + '</span>' + ICON.chev;
+    h += '</button>' + addBtn(it) + '</div>';
+    if (exp) {
+      h += '<div class="row-detail" id="d-' + esc(it.id) + '">';
+      if (it.notes) h += '<div class="notes"><p class="label-cap">My notes</p><p>' + esc(it.notes) + '</p></div>';
+      var links = linksHtml(it, false);
+      if (links) h += '<div class="links">' + links + '</div>';
+      if (photos.length) {
+        h += stripHtml(it);
+      } else {
+        h += '<p class="no-photos">Photos available on request</p>';
+      }
+      h += '</div>';
+    }
+    return h + '</article>';
+  }
+
+  function cardHtml(it) {
+    var photos = it.photos || [];
+    var fill = fillText(it);
+    var neu = isNew(it);
+    var h = '<article class="card">';
+    if (photos.length) {
+      h += '<button class="card-photo" type="button" data-action="view" data-id="' + esc(it.id) + '" data-i="0" aria-label="See photos of ' +
+        esc(it.brand + ' ' + it.name) + '"><img src="' + esc(photos[0].thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' +
+        '<span class="counter">1 / ' + photos.length + '</span>' + (neu ? '<span class="badge-new">NEW</span>' : '') + '</button>';
+    } else {
+      h += '<div class="card-empty">' + ICON.cameraLg + 'Photos on request</div>';
+    }
+    h += '<div class="card-body">';
+    h += '<div class="card-meta">' + esc(it.brand) + (!photos.length && neu ? '<span class="badge-new">NEW</span>' : '') + tagHtml(it) + '</div>';
+    h += '<div class="card-name">' + esc(it.name) + '</div>';
+    h += '<div class="card-lineage">' + esc(lineage(it)) + '</div>';
+    if (fill) h += '<div class="card-fill">' + esc(fill) + '</div>';
+    if (it.notes) h += '<p class="card-note">“' + esc(it.notes) + '”</p>';
+    var links = fragLinks(it);
+    if (links.length) h += '<a class="frag-link" href="' + esc(links[0].url) + '" target="_blank" rel="noopener">' + ICON.ext + esc(links[0].short) + '</a>';
+    h += '</div>';
+    h += '<div class="card-foot"><span class="price">' + inr(it.price) + '</span>' + addBtn(it) + '</div>';
+    return h + '</article>';
+  }
+
+  function stripHtml(it) {
+    var photos = it.photos || [];
+    return '<div class="strip">' + photos.map(function (p, i) {
+      return '<button class="strip-photo" type="button" data-action="view" data-id="' + esc(it.id) + '" data-i="' + i +
+        '" aria-label="Zoom photo ' + (i + 1) + ' of ' + photos.length + ' of ' + esc(it.name) + '">' +
+        '<img src="' + esc(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' +
+        '<span class="zoom-chip">' + ICON.zoom + (DESK.matches ? 'Click to zoom' : 'Tap to zoom') + '</span></button>';
+    }).join('') + '</div>';
+  }
+
+  function tableHtml(list) {
+    var h = '<div class="table-box"><table class="ptable"><thead><tr>' +
+      '<th scope="col">Perfume</th><th scope="col">Inspired by</th><th scope="col" class="c-fill">Fill</th>' +
+      '<th scope="col" class="c-det">Details</th><th scope="col" class="c-price num">Price</th>' +
+      '<th scope="col" class="c-add"><span class="sr-only">Add to cart</span></th></tr></thead><tbody>';
+    list.forEach(function (it) {
+      var exp = S.expanded === it.id;
+      var photos = it.photos || [];
+      h += '<tr class="prow' + (exp ? ' open' : '') + '" data-row="' + esc(it.id) + '">';
+      h += '<td><button class="row-toggle" type="button" data-action="expand" data-id="' + esc(it.id) + '" data-fkey="exp-' + esc(it.id) +
+        '" aria-expanded="' + exp + '" aria-controls="d-' + esc(it.id) + '">' + ICON.chev +
+        '<span class="row-info"><span class="row-meta">' + esc(it.brand) + (isNew(it) ? '<span class="badge-new">NEW</span>' : '') + tagHtml(it) +
+        '</span><span class="row-name">' + esc(it.name) + '</span></span></button></td>';
+      h += '<td class="td-muted">' + esc(it.inspiredBy || 'Original') + '</td>';
+      h += '<td class="td-fill">' + esc(fillText(it)) + '</td>';
+      h += '<td><span class="details">' +
+        (photos.length ? '<span class="mini" aria-label="' + photos.length + ' photos">' + ICON.camera + photos.length + '</span>' : '') +
+        (it.notes ? '<span class="mini">' + ICON.note + 'Notes</span>' : '') + '</span></td>';
+      h += '<td class="num"><span class="price">' + inr(it.price) + '</span></td>';
+      h += '<td>' + addBtn(it) + '</td></tr>';
+      if (exp) {
+        h += '<tr class="pdetail"><td colspan="6" id="d-' + esc(it.id) + '"><div class="d-wrap"><div class="d-left">';
+        if (it.notes) h += '<div class="notes"><p class="label-cap">My notes</p><p>' + esc(it.notes) + '</p></div>';
+        var links = linksHtml(it, false);
+        if (links) h += '<div class="links">' + links + '</div>';
+        if (!photos.length) h += '<p class="no-photos">Photos available on request</p>';
+        h += '</div>';
+        if (photos.length) h += '<div class="d-right">' + stripHtml(it) + '</div>';
+        h += '</div></td></tr>';
+      }
+    });
+    return h + '</tbody></table></div>';
+  }
+
+  function renderResults() {
+    var el = $('results');
+    var fkey = document.activeElement && document.activeElement.getAttribute('data-fkey');
+    var list = visibleItems();
+    $('resultCount').textContent = list.length + (list.length === 1 ? ' perfume' : ' perfumes') + ' available';
+    el.className = 'results' + (S.view === 'photos' ? ' grid' : '');
+    if (!list.length) {
+      el.innerHTML = '<div class="panel-msg">Nothing matches — try another search or category.</div>';
+    } else if (S.view === 'photos') {
+      el.innerHTML = list.map(cardHtml).join('');
+    } else if (DESK.matches) {
+      el.innerHTML = tableHtml(list);
+    } else {
+      el.innerHTML = list.map(rowHtml).join('');
+    }
+    if (fkey) {
+      var again = el.querySelector('[data-fkey="' + fkey + '"]');
+      if (again) again.focus();
+    }
+  }
+
+  /* ---------- Cart panel (desktop) ---------- */
+  function cartItems() {
+    return S.cart.map(function (id) { return S.items.filter(function (it) { return it.id === id; })[0]; }).filter(Boolean);
+  }
+  function cartMath() {
+    var items = cartItems();
+    var st = S.settings;
+    var subtotal = items.reduce(function (sum, it) { return sum + (it.price || 0); }, 0);
+    var tier = null;
+    (S.data && S.data.discounts || []).forEach(function (d) {
+      if (subtotal >= d.minOrder && (!tier || d.minOrder > tier.minOrder)) tier = d;
+    });
+    var discount = tier ? Math.round(subtotal * tier.percent / 100) : 0;
+    var minOrder = st.minimumOrder || 0, freeShip = st.freeShippingFrom || 0;
+    return {
+      items: items, subtotal: subtotal, tier: tier, discount: discount, total: subtotal - discount,
+      belowMin: minOrder > 0 && subtotal < minOrder ? minOrder - subtotal : 0,
+      shipCharged: freeShip > 0 && subtotal < freeShip,
+      minOrder: minOrder, freeShip: freeShip
+    };
+  }
+  function warnings(m) {
+    var w = [];
+    if (m.belowMin) w.push('Add ' + inr(m.belowMin) + ' more to reach the ' + inr(m.minOrder) + ' minimum order');
+    if (m.shipCharged) w.push('Shipping will be charged on orders under ' + inr(m.freeShip));
+    return w;
+  }
+  function renderCart() {
+    var m = cartMath();
+    // Desktop panel
+    $('cartList').innerHTML = m.items.length ? m.items.map(function (it) {
+      var fill = fillText(it);
+      return '<div class="cart-line"><div class="cl-info"><span class="cl-brand">' + esc(it.brand) + '</span><span class="cl-name">' +
+        esc(it.name + (fill ? ' · ' + fill : '')) + '</span></div><span class="cl-price">' + inr(it.price) + '</span>' +
+        '<button class="remove-btn" type="button" data-action="uncart" data-id="' + esc(it.id) + '" aria-label="Remove ' +
+        esc(it.brand + ' ' + it.name) + ' from cart"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+    }).join('') : '<p class="cart-empty">Nothing added yet.</p>';
+    var sums = '';
+    if (m.discount) {
+      sums += '<div class="sum-row"><span>Subtotal</span><span>' + inr(m.subtotal) + '</span></div>';
+      sums += '<div class="sum-row discount"><span>Discount (' + m.tier.percent + '% off)</span><span>−' + inr(m.discount) + '</span></div>';
+    }
+    sums += '<div class="cart-total"><span>Total</span><span>' + inr(m.total) + '</span></div>';
+    $('cartSums').innerHTML = sums;
+    var w = m.items.length ? warnings(m) : [];
+    $('cartWarn').innerHTML = w.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('');
+    $('cartWarn').hidden = !w.length;
+    $('panelSend').hidden = !m.items.length;
+    document.querySelector('.send-help').hidden = !m.items.length;
+
+    // Phone bar
+    var n = m.items.length;
+    $('cartDock').hidden = !n && $('barNotice').hidden;
+    $('cartBar').hidden = !n;
+    document.body.classList.toggle('has-cart', n > 0);
+    $('cbSum').textContent = n + (n === 1 ? ' item · ' : ' items · ') + inr(m.total);
+    var note = [];
+    if (m.belowMin) note.push(inr(m.belowMin) + ' below the ' + inr(m.minOrder) + ' minimum');
+    else if (m.shipCharged) note.push('Shipping charged under ' + inr(m.freeShip));
+    if (m.discount) note.push(m.tier.percent + '% off applied');
+    $('cbNote').textContent = note.length ? note.join(' · ') : 'Free shipping';
+  }
+
+  /* ---------- Notices ---------- */
+  function showNotice(text) {
+    ['panelNotice', 'barNotice'].forEach(function (id) {
+      var el = $(id);
+      el.querySelector('p').textContent = text;
+      el.hidden = !text;
+    });
+    renderCart();
+  }
+
+  /* ---------- Availability re-check + WhatsApp ---------- */
+  function msgFill(it) {
+    var r = it.remaining, s = it.sizeMl;
+    if (r != null && s != null) return r + '/' + s + ' ml';
+    if (s != null) return s + ' ml';
+    if (r != null) return typeof r === 'number' ? r + ' ml' : String(r);
+    return '';
+  }
+  function buildMessage(m) {
+    var lines = ["Hi! I'd like to order these from your declutter:"];
+    m.items.forEach(function (it, i) {
+      var parts = ['[' + it.id + '] ' + it.brand + ' ' + it.name];
+      var f = msgFill(it); if (f) parts.push(f);
+      parts.push(inr(it.price));
+      lines.push((i + 1) + '. ' + parts.join(' · '));
+    });
+    lines.push('');
+    lines.push('Subtotal: ' + inr(m.subtotal));
+    if (m.discount) lines.push('Discount (' + m.tier.percent + '% off): -' + inr(m.discount));
+    lines.push('Total: ' + inr(m.total));
+    if (m.belowMin) lines.push('Note: this is below your ' + inr(m.minOrder) + ' minimum order.');
+    if (m.shipCharged) lines.push('Shipping to be added (order under ' + inr(m.freeShip) + ').');
+    return lines.join('\n');
+  }
+  function setSending(on) {
+    document.querySelectorAll('[data-action="send"]').forEach(function (b) {
+      b.disabled = on;
+      var label = b.querySelector('.send-label');
+      if (!label.getAttribute('data-label')) label.setAttribute('data-label', label.textContent);
+      label.textContent = on ? 'Checking…' : label.getAttribute('data-label');
+    });
+  }
+  function names(ids, oldItems) {
+    return ids.map(function (id) {
+      var it = oldItems.filter(function (x) { return x.id === id; })[0];
+      return it ? it.brand + ' ' + it.name : id;
+    }).join(', ');
+  }
+  function sendOrder() {
+    if (!S.cart.length) return;
+    if (!S.settings.whatsappNumber) { showNotice('Ordering isn’t set up yet: the shop’s WhatsApp number is missing.'); return; }
+    var before = S.items.slice();
+    setSending(true);
+    fetchData().then(function (d) {
+      applyData(d);
+      var gone = pruneCart();
+      if (gone.length) {
+        showNotice('Sorry, ' + names(gone, before) + (gone.length === 1 ? ' has' : ' have') +
+          ' just sold and ' + (gone.length === 1 ? 'was' : 'were') + ' removed from your cart. Check your cart, then tap Send again.');
+        return;
+      }
+      if (!S.cart.length) return;
+      showNotice('');
+      var url = 'https://wa.me/' + S.settings.whatsappNumber + '?text=' + encodeURIComponent(buildMessage(cartMath()));
+      window.location.href = url;
+    }).catch(function (err) {
+      console.error(err);
+      showNotice('Couldn’t check which items are still available. Check your internet connection and try again.');
+    }).then(function () { setSending(false); });
+  }
+  // Removes cart items that are no longer available. Returns their IDs.
+  function pruneCart() {
+    var live = {};
+    S.items.forEach(function (it) { live[it.id] = true; });
+    var gone = S.cart.filter(function (id) { return !live[id]; });
+    if (gone.length) { S.cart = S.cart.filter(function (id) { return live[id]; }); saveCart(); renderResults(); renderCart(); }
+    return gone;
+  }
+
+  /* ---------- Rendering: controls ---------- */
+  function setPressed(container, attr, value) {
+    container.querySelectorAll('[' + attr + ']').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute(attr) === value));
+    });
+  }
+  function renderControls() {
+    setPressed($('cats'), 'data-cat', S.cat);
+    setPressed(document.querySelector('.views'), 'data-view', S.view);
+    setPressed($('typeSeg'), 'data-type', S.type);
+    setPressed($('linSeg'), 'data-lin', S.lin);
+    setPressed($('famChips'), 'data-fam', S.fam);
+    $('newBtn').setAttribute('aria-pressed', String(S.newOnly));
+    $('viewHint').textContent = HINTS[S.view];
+    $('brandSel').classList.toggle('active', !!S.brand);
+    $('priceSel').classList.toggle('active', !!S.price);
+    $('filters').classList.toggle('open', S.advOpen);
+    $('moreBtn').setAttribute('aria-expanded', String(S.advOpen));
+    var n = (S.lin !== 'all' ? 1 : 0) + (S.fam ? 1 : 0);
+    if (DESK.matches) {
+      $('moreLabel').textContent = (S.advOpen ? 'Fewer filters' : 'More filters') + (n ? ' (' + n + ')' : '');
+    } else {
+      n += (S.brand ? 1 : 0) + (S.price ? 1 : 0);   // on phones Brand and Price live inside the panel
+      $('moreLabel').textContent = 'Filters' + (n ? ' (' + n + ')' : '');
+    }
+    $('clearQ').hidden = !S.q;
+  }
+  function update() { renderControls(); renderResults(); }
+  DESK.addEventListener('change', function () { renderControls(); renderResults(); renderCart(); });
+
+  /* ---------- Search suggestions ---------- */
+  function renderSuggest() {
+    var ul = $('suggest'), input = $('q');
+    var q = S.q.trim();
+    S.sugList = q ? S.items.filter(function (it) { return matchesQuery(it, q); }).slice(0, 4) : [];
+    var open = S.sugList.length > 0 && document.activeElement === input;
+    ul.hidden = !open;
+    input.setAttribute('aria-expanded', String(open));
+    if (!open) { S.sugIndex = -1; input.removeAttribute('aria-activedescendant'); ul.innerHTML = ''; return; }
+    ul.innerHTML = S.sugList.map(function (it, i) {
+      var sub = (it.inspiredBy ? 'Inspired by ' + it.inspiredBy : 'Original') + ' · ' + inr(it.price);
+      return '<li role="presentation"><button type="button" role="option" id="sug-' + i + '" tabindex="-1" data-action="pick" data-i="' + i +
+        '" aria-selected="' + (i === S.sugIndex) + '"><span class="s-title">' + esc(it.brand + ' ' + it.name) +
+        '</span><span class="s-sub">' + esc(sub) + '</span></button></li>';
+    }).join('');
+    if (S.sugIndex >= 0) input.setAttribute('aria-activedescendant', 'sug-' + S.sugIndex);
+    else input.removeAttribute('aria-activedescendant');
+  }
+  function closeSuggest() { S.sugIndex = -1; $('suggest').hidden = true; $('q').setAttribute('aria-expanded', 'false'); }
+  function pickSuggestion(i) {
+    var it = S.sugList[i];
+    if (!it) return;
+    S.q = it.brand + ' ' + it.name;
+    $('q').value = S.q;
+    closeSuggest();
+    update();
+  }
+
+  /* ---------- Photo viewer ---------- */
+  var V = { item: null, i: 0, s: 1, x: 0, y: 0, opener: null, pointers: {}, pinch: null, drag: null, lastTap: 0 };
+
+  function openViewer(id, i, opener) {
+    var it = S.items.filter(function (x) { return x.id === id; })[0];
+    if (!it || !(it.photos || []).length) return;
+    var fill = fillText(it);
+    openSet({ kicker: it.brand, title: it.name + (fill ? ' · ' + fill : ''), name: it.name, photos: it.photos }, i, opener);
+  }
+  // Opens any set of photos: { kicker, title, name, photos: [{ full, thumb, caption? }] }
+  function openSet(set, i, opener) {
+    var it = set;
+    V.item = it; V.opener = opener || null;
+    $('vBrand').textContent = it.kicker || '';
+    $('vName').textContent = it.title;
+    $('vThumbs').innerHTML = it.photos.map(function (p, n) {
+      return '<button type="button" data-vi="' + n + '" aria-label="Photo ' + (n + 1) + '"><img src="' + esc(p.thumb) +
+        '" alt="" referrerpolicy="no-referrer"></button>';
+    }).join('');
+    $('vThumbs').hidden = it.photos.length < 2;
+    $('vHint').textContent = it.photos.length > 1 ? 'Pinch or double-tap to zoom · swipe for next' : 'Pinch or double-tap to zoom';
+    $('viewer').hidden = false;
+    document.body.style.overflow = 'hidden';
+    showPhoto(i);
+    $('vClose').focus();
+    try { history.pushState({ fdViewer: true }, ''); } catch (e) {}
+  }
+  function showPhoto(i) {
+    var n = V.item.photos.length;
+    V.i = (i + n) % n;
+    resetZoom();
+    var p = V.item.photos[V.i];
+    $('vImg').src = p.full;
+    $('vImg').alt = 'Photo ' + (V.i + 1) + ' of ' + V.item.name;
+    $('vCount').textContent = 'Photo ' + (V.i + 1) + ' of ' + n;
+    $('vCaption').textContent = p.caption || '';
+    $('vCaption').hidden = !p.caption;
+    $('vThumbs').querySelectorAll('button').forEach(function (b, k) { b.setAttribute('aria-current', String(k === V.i)); });
+  }
+  function closeViewer(fromHistory) {
+    if ($('viewer').hidden) return;
+    $('viewer').hidden = true;
+    $('vImg').removeAttribute('src');
+    if ($('vouches').hidden) document.body.style.overflow = '';
+    if (V.opener && document.body.contains(V.opener)) V.opener.focus();
+    V.item = null;
+    if (!fromHistory && history.state && history.state.fdViewer) popBack();
+  }
+  // history.back() without triggering our own popstate handler
+  var skipPop = false;
+  function popBack() { skipPop = true; history.back(); }
+
+  /* ---------- Vouches gallery ---------- */
+  var vouchOpener = null;
+  function vouchList() { return (S.data && S.data.vouches) || []; }
+  function monthLabel(d) {
+    var m = String(d || '').match(/^(\d{4})-(\d{2})/);
+    if (!m) return '';
+    return new Date(+m[1], +m[2] - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  }
+  function openVouches(opener) {
+    var list = vouchList();
+    if (!list.length) return;
+    vouchOpener = opener || null;
+    $('vgGrid').innerHTML = list.map(function (v, i) {
+      var cap = [v.caption, monthLabel(v.date)].filter(Boolean).join(' · ');
+      return '<div class="vg-item"><button type="button" data-action="vview" data-i="' + i + '" aria-label="Open vouch ' + (i + 1) +
+        ' of ' + list.length + (cap ? ': ' + esc(cap) : '') + '"><img src="' + esc(v.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></button>' +
+        (cap ? '<p class="vg-cap">' + esc(cap) + '</p>' : '') + '</div>';
+    }).join('');
+    $('vouches').hidden = false;
+    $('vouches').scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+    $('vgClose').focus();
+    try { history.pushState({ fdVouches: true }, ''); } catch (e) {}
+  }
+  function closeVouches(fromHistory) {
+    if ($('vouches').hidden) return;
+    $('vouches').hidden = true;
+    document.body.style.overflow = '';
+    if (vouchOpener && document.body.contains(vouchOpener)) vouchOpener.focus();
+    if (!fromHistory && history.state && history.state.fdVouches) popBack();
+  }
+  function viewVouch(i, opener) {
+    var list = vouchList();
+    openSet({
+      kicker: '', title: 'Vouches', name: 'vouch',
+      photos: list.map(function (v) {
+        return { full: v.full, thumb: v.thumb, caption: [v.caption, monthLabel(v.date)].filter(Boolean).join(' · ') };
+      })
+    }, i, opener);
+  }
+
+  function applyZoom(animate) {
+    var img = $('vImg');
+    img.style.transition = animate ? 'transform 0.2s' : 'none';
+    img.style.transform = 'translate(' + V.x + 'px,' + V.y + 'px) scale(' + V.s + ')';
+  }
+  function resetZoom() { V.s = 1; V.x = 0; V.y = 0; applyZoom(false); }
+  function clampPan() {
+    var r = $('vStage').getBoundingClientRect();
+    var mx = (r.width * (V.s - 1)) / 2, my = (r.height * (V.s - 1)) / 2;
+    V.x = Math.max(-mx, Math.min(mx, V.x));
+    V.y = Math.max(-my, Math.min(my, V.y));
+  }
+  function zoomAt(scale, cx, cy) {
+    var r = $('vStage').getBoundingClientRect();
+    var ox = cx - (r.left + r.width / 2), oy = cy - (r.top + r.height / 2);
+    var k = scale / V.s;
+    V.x = ox - (ox - V.x) * k;
+    V.y = oy - (oy - V.y) * k;
+    V.s = scale;
+    if (V.s <= 1.01) { V.s = 1; V.x = 0; V.y = 0; }
+    clampPan();
+  }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  function bindViewer() {
+    var stage = $('vStage');
+    stage.addEventListener('pointerdown', function (e) {
+      stage.setPointerCapture(e.pointerId);
+      V.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(V.pointers);
+      if (ids.length === 2) {
+        var a = V.pointers[ids[0]], b = V.pointers[ids[1]];
+        V.pinch = { d: dist(a, b), s: V.s, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+        V.drag = null;
+      } else if (ids.length === 1) {
+        V.drag = { sx: e.clientX, sy: e.clientY, x: V.x, y: V.y, moved: false };
+      }
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!V.pointers[e.pointerId]) return;
+      V.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(V.pointers);
+      if (V.pinch && ids.length === 2) {
+        var a = V.pointers[ids[0]], b = V.pointers[ids[1]];
+        var target = Math.max(1, Math.min(4, V.pinch.s * dist(a, b) / V.pinch.d));
+        zoomAt(target, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        applyZoom(false);
+      } else if (V.drag) {
+        var dx = e.clientX - V.drag.sx, dy = e.clientY - V.drag.sy;
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) V.drag.moved = true;
+        if (V.s > 1) { V.x = V.drag.x + dx; V.y = V.drag.y + dy; clampPan(); }
+        else { V.x = dx; V.y = 0; }   // follow the finger while swiping
+        applyZoom(false);
+      }
+    });
+    function end(e) {
+      if (!V.pointers[e.pointerId]) return;
+      delete V.pointers[e.pointerId];
+      var left = Object.keys(V.pointers).length;
+      if (V.pinch) { if (left < 2) V.pinch = null; V.drag = null; return; }
+      var d = V.drag; V.drag = null;
+      if (!d) return;
+      var dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+      if (V.s === 1) {
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && V.item.photos.length > 1) {
+          showPhoto(V.i + (dx < 0 ? 1 : -1));
+          return;
+        }
+        V.x = 0; applyZoom(true);
+      }
+      if (!d.moved) {
+        var now = Date.now();
+        if (now - V.lastTap < 300) {
+          zoomAt(V.s > 1 ? 1 : 2.5, e.clientX, e.clientY);
+          applyZoom(true);
+          V.lastTap = 0;
+        } else V.lastTap = now;
+      }
+    }
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+    stage.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var target = Math.max(1, Math.min(4, V.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      zoomAt(target, e.clientX, e.clientY);
+      applyZoom(false);
+    }, { passive: false });
+    $('vClose').addEventListener('click', function () { closeViewer(false); });
+    $('vThumbs').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-vi]');
+      if (b) showPhoto(+b.getAttribute('data-vi'));
+    });
+    window.addEventListener('popstate', function () {
+      if (skipPop) { skipPop = false; return; }
+      if (!$('viewer').hidden) closeViewer(true);
+      else if (!$('vouches').hidden) closeVouches(true);
+    });
+    document.addEventListener('keydown', function (e) {
+      if ($('viewer').hidden) {
+        if (e.key === 'Escape' && !$('vouches').hidden) closeVouches(false);
+        return;
+      }
+      if (e.key === 'Escape') closeViewer(false);
+      else if (e.key === 'ArrowRight') showPhoto(V.i + 1);
+      else if (e.key === 'ArrowLeft') showPhoto(V.i - 1);
+      else if (e.key === 'Tab') {
+        // keep focus inside the viewer
+        var f = $('viewer').querySelectorAll('button:not([hidden])');
+        var vis = Array.prototype.filter.call(f, function (b) { return b.offsetParent !== null; });
+        if (!vis.length) return;
+        var first = vis[0], last = vis[vis.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+  }
+
+  /* ---------- Events ---------- */
+  function bind() {
+    // Theme
+    $('themeBtn').addEventListener('click', function () {
+      var dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      store('fd-theme', dark ? 'dark' : 'light');
+      themeLabel();
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+      if (store('fd-theme')) return;   // the visitor chose a theme: keep it
+      document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      themeLabel();
+    });
+
+    // Search
+    var input = $('q');
+    input.addEventListener('input', function () { S.q = input.value; S.sugIndex = -1; renderSuggest(); update(); });
+    input.addEventListener('focus', renderSuggest);
+    input.addEventListener('blur', function () { setTimeout(closeSuggest, 120); });
+    input.addEventListener('keydown', function (e) {
+      var n = S.sugList.length;
+      if (e.key === 'ArrowDown' && n) { e.preventDefault(); S.sugIndex = (S.sugIndex + 1) % n; renderSuggest(); }
+      else if (e.key === 'ArrowUp' && n) { e.preventDefault(); S.sugIndex = (S.sugIndex - 1 + n) % n; renderSuggest(); }
+      else if (e.key === 'Enter') {
+        if (S.sugIndex >= 0) { e.preventDefault(); pickSuggestion(S.sugIndex); }
+        else { closeSuggest(); input.blur(); }
+      } else if (e.key === 'Escape') closeSuggest();
+    });
+    $('suggest').addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus in the input
+    $('clearQ').addEventListener('click', function () { S.q = ''; input.value = ''; closeSuggest(); update(); input.focus(); });
+
+    // Filters
+    $('newBtn').addEventListener('click', function () { S.newOnly = !S.newOnly; update(); });
+    $('brandSel').addEventListener('change', function (e) { S.brand = e.target.value; update(); });
+    $('priceSel').addEventListener('change', function (e) { S.price = e.target.value; update(); });
+    $('moreBtn').addEventListener('click', function () { S.advOpen = !S.advOpen; renderControls(); });
+
+    // Everything else (delegated)
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-cat],[data-view],[data-type],[data-lin],[data-fam],[data-action]');
+      if (!t) {
+        // Desktop: clicking anywhere on a table row opens it
+        var tr = e.target.closest('tr.prow');
+        if (tr && !e.target.closest('a,button')) {
+          var rid = tr.getAttribute('data-row');
+          S.expanded = S.expanded === rid ? null : rid; renderResults();
+        }
+        return;
+      }
+      if (t.closest('#viewer')) return;
+      if (t.hasAttribute('data-cat')) { S.cat = t.getAttribute('data-cat'); S.expanded = null; update(); }
+      else if (t.hasAttribute('data-view')) { S.view = t.getAttribute('data-view'); store('fd-view', S.view); update(); }
+      else if (t.hasAttribute('data-type')) { S.type = t.getAttribute('data-type'); update(); }
+      else if (t.hasAttribute('data-lin')) { S.lin = t.getAttribute('data-lin'); update(); }
+      else if (t.hasAttribute('data-fam')) { var f = t.getAttribute('data-fam'); S.fam = S.fam === f ? '' : f; update(); }
+      else {
+        var a = t.getAttribute('data-action'), id = t.getAttribute('data-id');
+        if (a === 'expand') { S.expanded = S.expanded === id ? null : id; renderResults(); }
+        else if (a === 'cart') {
+          S.cart = inCart(id) ? S.cart.filter(function (x) { return x !== id; }) : S.cart.concat([id]);
+          saveCart(); renderResults(); renderCart();
+        }
+        else if (a === 'uncart') {
+          S.cart = S.cart.filter(function (x) { return x !== id; });
+          saveCart(); renderResults(); renderCart(); $('cartTitle').focus();
+        }
+        else if (a === 'view') openViewer(id, +t.getAttribute('data-i') || 0, t);
+        else if (a === 'send') sendOrder();
+        else if (a === 'vopen') openVouches(t);
+        else if (a === 'vclose') closeVouches(false);
+        else if (a === 'vview') viewVouch(+t.getAttribute('data-i'), t);
+        else if (a === 'dismiss') showNotice('');
+        else if (a === 'pick') pickSuggestion(+t.getAttribute('data-i'));
+      }
+    });
+    bindViewer();
+  }
+  function themeLabel() {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    $('themeText').textContent = dark ? 'Light mode' : 'Dark mode';
+  }
+
+  /* ---------- Data ---------- */
+  function showMessage(html) {
+    $('results').className = 'results';
+    $('results').innerHTML = '<div class="panel-msg">' + html + '</div>';
+    $('resultCount').textContent = '';
+  }
+  function fetchData() {
+    var url = DATA_URL + (DATA_URL.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      if (d && d.error) throw new Error(d.error);
+      return d;
+    });
+  }
+  function load() {
+    if (!/^https:\/\//.test(DATA_URL)) {
+      showMessage('Add your Apps Script web app link to DATA_URL at the top of index.html to load the collection.');
+      return;
+    }
+    showMessage('Loading the collection…');
+    fetchData().then(applyData).catch(function (err) {
+      console.error(err);
+      showMessage('The collection couldn’t load. Check your internet connection and try again.' +
+        '<br><button type="button" id="retry">Try again</button>');
+      var b = $('retry'); if (b) b.addEventListener('click', load);
+    });
+  }
+  function applyData(d) {
+    S.data = d;
+    S.settings = d.settings || {};
+    S.items = (d.items || []).filter(function (it) { return it && it.id; });
+    var st = S.settings;
+
+    var name = st.storeName || 'Fragrance Declutter';
+    $('storeName').textContent = name;
+    document.title = name;
+    $('tagline').textContent = st.tagline || '';
+    $('tagline').hidden = !st.tagline;
+    $('banner').textContent = st.banner || '';
+    $('banner').hidden = !st.banner;
+    if (st.whatsappNumber) {
+      $('askBtn').href = 'https://wa.me/' + st.whatsappNumber + '?text=' +
+        encodeURIComponent('Hi! I have a question about your fragrance declutter.');
+      $('askBtn').hidden = false;
+    }
+    $('vouchBtn').hidden = !(d.vouches && d.vouches.length);
+    $('deliveryNote').textContent = st.deliveryNote || '';
+    $('deliveryNote').hidden = !st.deliveryNote;
+    var credit = $('credit');
+    if (st.creditLine) {
+      credit.innerHTML = REPO_URL ? '<a href="' + esc(REPO_URL) + '" target="_blank" rel="noopener">' + esc(st.creditLine) + '</a>' : esc(st.creditLine);
+      credit.hidden = false;
+    }
+
+    $('photoCount').textContent = S.items.filter(function (it) { return (it.photos || []).length; }).length;
+
+    // Brand dropdown
+    var brands = S.items.map(function (it) { return it.brand; }).filter(Boolean)
+      .filter(function (b, i, arr) { return arr.indexOf(b) === i; })
+      .sort(function (a, b) { return a.localeCompare(b); });
+    if (S.brand && brands.indexOf(S.brand) === -1) S.brand = '';
+    $('brandSel').innerHTML = '<option value="">Brand</option>' + brands.map(function (b) {
+      return '<option value="' + esc(b) + '"' + (b === S.brand ? ' selected' : '') + '>' + esc(b) + '</option>';
+    }).join('');
+
+    // Price dropdown
+    $('priceSel').innerHTML = PRICES.map(function (p) {
+      return '<option value="' + p.id + '"' + (p.id === S.price ? ' selected' : '') + '>' + p.label + '</option>';
+    }).join('');
+
+    // Scent family chips
+    var fams = (st.scentFamilies && st.scentFamilies.length) ? st.scentFamilies : DEFAULT_FAMILIES;
+    $('famChips').innerHTML = fams.map(function (f) {
+      return '<button class="chip" type="button" data-fam="' + esc(f) + '" aria-pressed="false">' + esc(f) + '</button>';
+    }).join('');
+
+    update();
+    if (!S.loadedOnce) {
+      S.loadedOnce = true;
+      var gone = pruneCart();
+      if (gone.length) {
+        showNotice((gone.length === 1 ? 'An item' : gone.length + ' items') + ' in your saved cart sold since your last visit and ' +
+          (gone.length === 1 ? 'was' : 'were') + ' removed.');
+      }
+    }
+    renderCart();
+  }
+
+  /* ---------- Start ---------- */
+  themeLabel();
+  $('priceSel').innerHTML = PRICES.map(function (p) { return '<option value="' + p.id + '">' + p.label + '</option>'; }).join('');
+  renderControls();
+  bind();
+  load();
+})();
+</script>
+</body>
+</html>
