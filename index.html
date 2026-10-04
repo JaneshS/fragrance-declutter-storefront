@@ -229,6 +229,31 @@ svg { flex: none; }
 .tag.aromatic { background: var(--t-aromatic-bg); color: var(--t-aromatic); }
 .tag.woody { background: var(--t-woody-bg); color: var(--t-woody); }
 .tag.floral { background: var(--t-floral-bg); color: var(--t-floral); }
+/* More scent families (add a pair here for any new family; class = name in lowercase, letters only) */
+.tag.citrus { background: #FAF0B8; color: #5E4B00; }
+.tag.amber { background: #F9DFB0; color: #6E3F00; }
+.tag.oud { background: #E9D7E4; color: #5A2150; }
+.tag.spicy { background: #FCDCC8; color: #8A2C00; }
+.tag.leather { background: #E2D3C7; color: #4F2E16; }
+.tag.aquatic { background: #CDEEEE; color: #0E5458; }
+.tag.fruity { background: #E8DCF6; color: #4F2A86; }
+.tag.powdery { background: #E1E4F2; color: #3A4373; }
+.tag.green { background: #E3F0C2; color: #3F5400; }
+.tag.musky { background: #E4E2DE; color: #45413A; }
+.tag.vanilla { background: #F7EED9; color: #64490F; }
+.tag.boozy { background: #F3D4D4; color: #7E1A1A; }
+[data-theme="dark"] .tag.citrus { background: #3D3610; color: #F2E39A; }
+[data-theme="dark"] .tag.amber { background: #4A3210; color: #F5D08F; }
+[data-theme="dark"] .tag.oud { background: #3D1E37; color: #EDC9E4; }
+[data-theme="dark"] .tag.spicy { background: #4E2310; color: #F8C4A6; }
+[data-theme="dark"] .tag.leather { background: #3A2A1F; color: #E3CDBB; }
+[data-theme="dark"] .tag.aquatic { background: #123A3C; color: #A8E2E4; }
+[data-theme="dark"] .tag.fruity { background: #33244A; color: #D8C6F5; }
+[data-theme="dark"] .tag.powdery { background: #262B45; color: #CDD3F2; }
+[data-theme="dark"] .tag.green { background: #2F3A10; color: #D3E6A0; }
+[data-theme="dark"] .tag.musky { background: #2E2C29; color: #DAD6CF; }
+[data-theme="dark"] .tag.vanilla { background: #3F3620; color: #F0E2BD; }
+[data-theme="dark"] .tag.boozy { background: #4A1C1C; color: #F2BEBE; }
 .badge-new { background: var(--strong); color: var(--on-strong); border-radius: 6px; padding: 0 6px; font-size: 10px; font-weight: 700; }
 
 .add {
@@ -678,6 +703,35 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   }
   function inr(n) { return '₹' + Number(n || 0).toLocaleString('en-IN'); }
   function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  // Drive thumbnail links -> Google's faster image CDN (falls back automatically if it fails)
+  var FALLBACK = {};
+  function fastImg(u) {
+    var m = String(u || '').match(/drive\.google\.com\/thumbnail\?id=([-\w]+)&sz=w(\d+)/);
+    if (!m) return u;
+    var f = 'https://lh3.googleusercontent.com/d/' + m[1] + '=w' + m[2];
+    FALLBACK[f] = u;
+    return f;
+  }
+  function fastPhotos(list) {
+    return (list || []).map(function (p) {
+      var o = {}; for (var k in p) o[k] = p[k];
+      o.full = fastImg(p.full); o.thumb = fastImg(p.thumb);
+      return o;
+    });
+  }
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && FALLBACK[t.src]) t.src = FALLBACK[t.src];
+  }, true);
+  function preload(url) {
+    if (!url) return;
+    var im = new Image();
+    im.referrerPolicy = 'no-referrer';
+    im.onerror = function () { if (FALLBACK[im.src]) im.src = FALLBACK[im.src]; };
+    im.src = url;
+    return im;
+  }
+
   function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : null; }
 
   /* ---------- State ---------- */
@@ -1002,7 +1056,7 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     var before = S.items.slice();
     setSending(true);
     fetchData().then(function (d) {
-      applyData(d);
+      applyData(d, false);
       var gone = pruneCart();
       if (gone.length) {
         showNotice('Sorry, ' + names(gone, before) + (gone.length === 1 ? ' has' : ' have') +
@@ -1117,7 +1171,13 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     V.i = (i + n) % n;
     resetZoom();
     var p = V.item.photos[V.i];
-    $('vImg').src = p.full;
+    // Show the small (already loaded) version at once, swap in full size when it arrives
+    $('vImg').src = p.thumb || p.full;
+    var hi = preload(p.full);
+    if (hi) {
+      hi.onload = function () { if (V.item && V.item.photos[V.i] === p) $('vImg').src = hi.src; };
+    }
+    if (n > 1) { preload(V.item.photos[(V.i + 1) % n].full); preload(V.item.photos[(V.i - 1 + n) % n].full); }
     $('vImg').alt = 'Photo ' + (V.i + 1) + ' of ' + V.item.name;
     $('vCount').textContent = 'Photo ' + (V.i + 1) + ' of ' + n;
     $('vCaption').textContent = p.caption || '';
@@ -1400,15 +1460,26 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
       showMessage('Add your Apps Script web app link to DATA_URL at the top of index.html to load the collection.');
       return;
     }
-    showMessage('Loading the collection…');
-    fetchData().then(applyData).catch(function (err) {
+    var cached = null;
+    try { cached = JSON.parse(store(CACHE_KEY) || 'null'); } catch (e) { cached = null; }
+    if (cached && cached.items) applyData(cached, true);   // instant: last copy seen on this device
+    else showMessage('Loading the collection…');
+    fetchData().then(function (d) { applyData(d, false); }).catch(function (err) {
       console.error(err);
+      if (S.fresh || (cached && cached.items)) return;   // keep showing the saved copy
       showMessage('The collection couldn’t load. Check your internet connection and try again.' +
         '<br><button type="button" id="retry">Try again</button>');
       var b = $('retry'); if (b) b.addEventListener('click', load);
     });
   }
-  function applyData(d) {
+  var CACHE_KEY = 'fd-data:' + DATA_URL;
+  function applyData(d, fromCache) {
+    if (!fromCache) { S.fresh = true; store(CACHE_KEY, JSON.stringify(d)); }
+    d.items = (d.items || []).map(function (it) {
+      var o = {}; for (var k in it) o[k] = it[k];
+      o.photos = fastPhotos(it.photos); return o;
+    });
+    d.vouches = fastPhotos(d.vouches);
     S.data = d;
     S.settings = d.settings || {};
     S.items = (d.items || []).filter(function (it) { return it && it.id; });
@@ -1458,7 +1529,7 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     }).join('');
 
     update();
-    if (!S.loadedOnce) {
+    if (!fromCache && !S.loadedOnce) {
       S.loadedOnce = true;
       var gone = pruneCart();
       if (gone.length) {
