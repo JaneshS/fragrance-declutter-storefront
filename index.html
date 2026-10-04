@@ -800,8 +800,18 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
       if (S.lin === 'insp' && !it.inspiredBy) return false;
       if (S.fam && norm(it.scentFamily) !== norm(S.fam)) return false;
       return matchesQuery(it, S.q);
-    });
+    }).sort(newestFirst);
   }
+  // Newest Date Listed first. Same date: the row added later (lower in the sheet) first.
+  // Items with no date come after, in sheet order.
+  function newestFirst(a, b) {
+    var da = dateKey(a.dateListed), db = dateKey(b.dateListed);
+    if (da && db && da !== db) return da < db ? 1 : -1;
+    if (da && !db) return -1;
+    if (!da && db) return 1;
+    return da ? b._row - a._row : a._row - b._row;
+  }
+  function dateKey(d) { var m = String(d || '').match(/^\d{4}-\d{2}-\d{2}/); return m ? m[0] : ''; }
 
   /* ---------- Rendering: results ---------- */
   function addBtn(it) {
@@ -1475,8 +1485,9 @@ body.has-cart { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   var CACHE_KEY = 'fd-data:' + DATA_URL;
   function applyData(d, fromCache) {
     if (!fromCache) { S.fresh = true; store(CACHE_KEY, JSON.stringify(d)); }
-    d.items = (d.items || []).map(function (it) {
+    d.items = (d.items || []).map(function (it, i) {
       var o = {}; for (var k in it) o[k] = it[k];
+      o._row = i;
       o.photos = fastPhotos(it.photos); return o;
     });
     d.vouches = fastPhotos(d.vouches);
