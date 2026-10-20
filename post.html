@@ -242,10 +242,13 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   }
 
   /* ---------- Collage ---------- */
+  // Where the square crop sits on a tall photo: 0 = top, 0.5 = middle, 1 = bottom.
+  // Set low so labels near the bottom of the bottle stay in frame.
+  var CROP_FOCUS_Y = 0.8;
   function cover(ctx, img, x, y, w, h) {
     var s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
     var sw = w / s, sh = h / s;
-    ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+    ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) * CROP_FOCUS_Y, sw, sh, x, y, w, h);
   }
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
