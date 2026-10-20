@@ -39,6 +39,7 @@ On the **Settings** tab, change the values in column **B**:
 | **New badge days** | How many days an item counts as NEW. |
 | **Delivery note** | Shown in the footer. |
 | **Credit line** | Shown in the footer. |
+| **Sheet link** | Optional. A view-only Google Sheet of your list. When filled, a **Sheet** button appears next to Table and Photos and opens it in a new tab. Leave it blank to hide the button. |
 
 **Discounts** (columns D–F) are optional. Set a tier's **Active** to **Yes** to switch it on.
 
