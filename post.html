@@ -49,6 +49,11 @@ h2 small { font-family: var(--ui); font-weight: 500; font-size: 13px; color: var
 .card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); }
 .search { width: 100%; height: 44px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--card); box-shadow: var(--shadow); }
 .list { margin-top: 8px; overflow: hidden; }
+.search-row { display: flex; gap: 8px; }
+.search-row .search { flex: 1; min-width: 0; }
+.toggle { height: 44px; border-radius: 12px; }
+.toggle[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); box-shadow: none; }
+.pill.new { background: var(--accent); color: var(--on-accent); }
 .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--subtle); cursor: pointer; }
 .row:first-child { border-top: 0; }
 .row input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
@@ -83,9 +88,13 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   <p class="sub">Pick what to feature, add your deals, and download a folder with a collage, every photo and the message.</p>
 
   <h2>1. Pick fragrances <small id="pickedCount">0 picked</small></h2>
-  <input class="search" id="search" type="search" placeholder="Search brand, name or inspiration" autocomplete="off">
+  <div class="search-row">
+    <input class="search" id="search" type="search" placeholder="Search brand, name or inspiration" autocomplete="off">
+    <button class="btn toggle" type="button" id="newBtn" aria-pressed="false">New</button>
+  </div>
   <div class="card list" id="list"><div class="empty">Loading your collection…</div></div>
   <div class="row-actions">
+    <button class="btn" type="button" id="pickShownBtn">Pick all shown</button>
     <button class="btn" type="button" id="clearBtn">Clear picks</button>
   </div>
 
@@ -125,7 +134,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   var DECANTS_PER_COLLAGE = 16;       // grid grows 2x2 -> 3x3 -> 4x4, then a new image
   var DECANT_GAP = 16;
 
-  var S = { items: [], settings: {}, picked: [], query: '', msgEdited: false, blobs: {}, busy: false };
+  var S = { items: [], settings: {}, picked: [], query: '', newOnly: false, msgEdited: false, blobs: {}, busy: false };
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- Helpers ---------- */
@@ -172,16 +181,30 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   }
 
   /* ---------- Picker ---------- */
-  function renderList() {
+  // Same rule as the shop: listed within the last "New badge days" (Settings).
+  function isNew(it) {
+    var m = String(it.dateListed || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return false;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var days = Math.round((today - new Date(+m[1], +m[2] - 1, +m[3])) / 86400000);
+    var limit = S.settings.newBadgeDays != null ? S.settings.newBadgeDays : 14;
+    return days >= 0 && days <= limit;
+  }
+  function shownItems() {
     var q = S.query.trim().toLowerCase();
-    var list = S.items.filter(function (it) {
+    return S.items.filter(function (it) {
+      if (S.newOnly && !isNew(it)) return false;
       return !q || [it.brand, it.name, it.inspiredBy, it.id].join(' ').toLowerCase().indexOf(q) !== -1;
     });
-    if (!list.length) { $('list').innerHTML = '<div class="empty">No matches.</div>'; return; }
+  }
+  function renderList() {
+    var list = shownItems();
+    if (!list.length) { $('list').innerHTML = '<div class="empty">' + (S.newOnly ? 'Nothing new matches.' : 'No matches.') + '</div>'; return; }
     $('list').innerHTML = list.map(function (it) {
       var ph = it.photos || [];
       var thumb = ph[0] ? '<img class="thumb" loading="lazy" alt="" src="' + esc(imgUrl(ph[0].thumb)) + '">' : '<div class="thumb"></div>';
-      var flag = ph.length === 0 ? '<span class="pill">no photos</span>' : ph.length === 1 ? '<span class="pill">no back photo</span>' : '';
+      var flag = (isNew(it) ? '<span class="pill new">New</span>' : '') +
+        (ph.length === 0 ? '<span class="pill">no photos</span>' : ph.length === 1 && !isDecant(it) ? '<span class="pill">no back photo</span>' : '');
       var meta = [it.type, fill(it), it.inspiredBy ? '≈ ' + it.inspiredBy : ''].filter(Boolean).join(' · ');
       return '<label class="row"><input type="checkbox" data-id="' + esc(it.id) + '"' + (S.picked.indexOf(it.id) !== -1 ? ' checked' : '') + '>' +
         thumb + '<div class="info"><div class="brand">' + esc(it.brand) + '</div><div class="name">' + esc(it.name) + flag + '</div>' +
@@ -438,6 +461,13 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     update(); schedulePreview();
   });
   $('search').addEventListener('input', function (e) { S.query = e.target.value; renderList(); });
+  $('newBtn').addEventListener('click', function () {
+    S.newOnly = !S.newOnly; $('newBtn').setAttribute('aria-pressed', String(S.newOnly)); renderList();
+  });
+  $('pickShownBtn').addEventListener('click', function () {
+    shownItems().forEach(function (it) { if (S.picked.indexOf(it.id) === -1) S.picked.push(it.id); });
+    renderList(); update(); schedulePreview();
+  });
   $('clearBtn').addEventListener('click', function () { S.picked = []; renderList(); update(); schedulePreview(); notice(''); });
   $('deals').addEventListener('input', refreshMessage);
   $('message').addEventListener('input', function () {
