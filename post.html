@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Post Builder</title>
+<script>
+  /* ---------- Setup: same values as index.html ---------- */
+  const DATA_URL = 'https://script.google.com/macros/s/AKfycbyAwLbsIOrQMcKHpJpaB7pZXohNqXnCUd_CKH3RgS-nqiZidaafqjmNd3zsev-K0rJh/exec';
+  const SITE_URL = 'https://declutters.netlify.app';
+
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('fd-theme'); } catch (e) {}
+    var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg: #EDF0F3; --card: #FFFFFF; --text: #1B2430; --muted: #556070; --line: #C5CDD8;
+  --subtle: #E3E8EE; --accent: #2B59C3; --on-accent: #FFFFFF; --warn: #8A5A00; --warn-bg: #FBEFD5;
+  --strong: #1B2430; --on-strong: #FFFFFF; --send: #1D7A44;
+  --shadow: 0 1px 2px rgba(27,36,48,0.08);
+  --head: 'Outfit', system-ui, sans-serif; --ui: 'DM Sans', system-ui, sans-serif;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: #11151B; --card: #1B212A; --text: #E8EDF3; --muted: #9AA6B5; --line: #364152;
+  --subtle: #252D38; --accent: #86A8F2; --on-accent: #0E1420; --warn: #F3D3A8; --warn-bg: #4A3416;
+  --strong: #E8EDF3; --on-strong: #11151B; --send: #3FAE6E; --shadow: none;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(--ui); padding-bottom: 120px; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 0; }
+h1 { font-family: var(--head); font-size: 26px; margin: 0 0 2px; }
+h2 { font-family: var(--head); font-size: 17px; margin: 24px 0 8px; display: flex; align-items: baseline; gap: 8px; }
+h2 small { font-family: var(--ui); font-weight: 500; font-size: 13px; color: var(--muted); }
+.sub { color: var(--muted); margin: 0; }
+.card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); }
+.search { width: 100%; height: 44px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--card); box-shadow: var(--shadow); }
+.list { margin-top: 8px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--subtle); cursor: pointer; }
+.row:first-child { border-top: 0; }
+.row input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--subtle); flex: none; }
+.info { flex: 1; min-width: 0; }
+.brand { font-size: 12px; color: var(--muted); }
+.name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta { font-size: 12px; color: var(--muted); }
+.price { font-weight: 700; white-space: nowrap; }
+.pill { display: inline-block; font-size: 11px; border-radius: 8px; padding: 0 6px; margin-left: 4px; background: var(--warn-bg); color: var(--warn); }
+.empty { padding: 16px; color: var(--muted); }
+textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; background: var(--card); box-shadow: var(--shadow); resize: vertical; }
+.row-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.btn { height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--card); box-shadow: var(--shadow); font-weight: 600; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.preview { margin-top: 8px; padding: 8px; }
+.preview img { width: 100%; display: block; border-radius: 8px; }
+.preview img + img { margin-top: 8px; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); box-shadow: 0 -4px 16px rgba(0,0,0,0.12); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.bar-in { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.bar-text { flex: 1; min-width: 0; }
+.bar-text b { display: block; }
+.bar-text span { font-size: 12px; color: var(--muted); }
+.go { height: 48px; padding: 0 18px; border-radius: 12px; border: 0; background: var(--send); color: #fff; font-weight: 700; }
+.go:disabled { opacity: 0.5; cursor: default; }
+.notice { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Post Builder</h1>
+  <p class="sub">Pick what to feature, add your deals, and download a folder with a collage, every photo and the message.</p>
+
+  <h2>1. Pick fragrances <small id="pickedCount">0 picked</small></h2>
+  <input class="search" id="search" type="search" placeholder="Search brand, name or inspiration" autocomplete="off">
+  <div class="card list" id="list"><div class="empty">Loading your collection…</div></div>
+  <div class="row-actions">
+    <button class="btn" type="button" id="clearBtn">Clear picks</button>
+  </div>
+
+  <h2>2. Deals and combos <small>optional, only in this post</small></h2>
+  <textarea id="deals" rows="4" placeholder="For example: Any 3 decants for Rs. 600. Buy the Scentari trio together for Rs. 2,500."></textarea>
+
+  <h2>3. Message <small id="msgState">updates as you pick</small></h2>
+  <textarea id="message" rows="12"></textarea>
+  <div class="row-actions">
+    <button class="btn" type="button" id="copyBtn">Copy message</button>
+    <button class="btn" type="button" id="resetMsgBtn" hidden>Rebuild from picks</button>
+  </div>
+
+  <h2>4. Collage preview <small id="collageInfo"></small></h2>
+  <div class="card preview" id="preview"><div class="empty">Pick fragrances to see the collage.</div></div>
+  <div class="notice" id="notice" hidden></div>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="bar-text"><b id="barTitle">Nothing picked yet</b><span id="barSub">Collage, photos and message in one zip</span></div>
+    <button class="go" type="button" id="downloadBtn" disabled>Download folder</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Collage layout (pixels) ---------- */
+  var ITEMS_PER_COLLAGE = 6;          // more than this starts a second collage image
+  var W = 1600, PAD = 40, GAP = 28, COLS = 2;
+  var TILE_W = (W - PAD * 2 - GAP * (COLS - 1)) / COLS;   // 746
+  var PHOTO = (TILE_W - 12) / 2;                           // two photos side by side
+  var CAPTION_H = 132, HEADER_H = 150, FOOTER_H = 90;
+
+  var S = { items: [], settings: {}, picked: [], query: '', msgEdited: false, blobs: {}, busy: false };
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- Helpers ---------- */
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function inr(n) { return 'Rs. ' + Number(n || 0).toLocaleString('en-IN'); }
+  function fill(it) {
+    var r = it.remaining, s = it.sizeMl;
+    if (typeof r === 'number' && s != null) return r === s ? s + ' ml (full)' : r + '/' + s + ' ml';
+    if (r != null && s != null) return r + ' · ' + s + ' ml';
+    if (s != null) return s + ' ml';
+    return r != null ? String(r) : '';
+  }
+  function title(it) { return [it.brand, it.name].filter(Boolean).join(' '); }
+  function slug(s) { return String(s || '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 50); }
+  // Drive thumbnail links do not allow the browser to read them; the lh3 form does.
+  function imgUrl(u) {
+    var m = String(u || '').match(/drive\.google\.com\/thumbnail\?id=([-\w]+)&sz=w(\d+)/);
+    return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w' + m[2] : u;
+  }
+  function pickedItems() { return S.picked.map(function (id) { return S.items.filter(function (x) { return x.id === id; })[0]; }).filter(Boolean); }
+  function notice(t) { $('notice').textContent = t || ''; $('notice').hidden = !t; }
+
+  /* ---------- Data ---------- */
+  function load() {
+    var cacheKey = 'fd-data:' + DATA_URL, cached = null;
+    try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
+    if (cached && cached.items) apply(cached);
+    fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) throw new Error(d.error);
+        try { localStorage.setItem(cacheKey, JSON.stringify(d)); } catch (e) {}
+        apply(d);
+      })
+      .catch(function () { if (!S.items.length) $('list').innerHTML = '<div class="empty">Couldn’t load the collection. Check your connection and reload.</div>'; });
+  }
+  function apply(d) {
+    S.settings = d.settings || {};
+    S.items = (d.items || []).filter(function (it) { return it && it.id; });
+    S.picked = S.picked.filter(function (id) { return S.items.some(function (x) { return x.id === id; }); });
+    renderList(); update();
+  }
+
+  /* ---------- Picker ---------- */
+  function renderList() {
+    var q = S.query.trim().toLowerCase();
+    var list = S.items.filter(function (it) {
+      return !q || [it.brand, it.name, it.inspiredBy, it.id].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+    if (!list.length) { $('list').innerHTML = '<div class="empty">No matches.</div>'; return; }
+    $('list').innerHTML = list.map(function (it) {
+      var ph = it.photos || [];
+      var thumb = ph[0] ? '<img class="thumb" loading="lazy" alt="" src="' + esc(imgUrl(ph[0].thumb)) + '">' : '<div class="thumb"></div>';
+      var flag = ph.length === 0 ? '<span class="pill">no photos</span>' : ph.length === 1 ? '<span class="pill">no back photo</span>' : '';
+      var meta = [it.type, fill(it), it.inspiredBy ? '≈ ' + it.inspiredBy : ''].filter(Boolean).join(' · ');
+      return '<label class="row"><input type="checkbox" data-id="' + esc(it.id) + '"' + (S.picked.indexOf(it.id) !== -1 ? ' checked' : '') + '>' +
+        thumb + '<div class="info"><div class="brand">' + esc(it.brand) + '</div><div class="name">' + esc(it.name) + flag + '</div>' +
+        '<div class="meta">' + esc(meta) + '</div></div><div class="price">' + esc(inr(it.price)) + '</div></label>';
+    }).join('');
+  }
+
+  /* ---------- Message ---------- */
+  function buildMessage() {
+    var items = pickedItems(), st = S.settings;
+    if (!items.length) return '';
+    var lines = ['*' + (st.storeName || 'Fragrance Declutter') + '*', ''];
+    items.forEach(function (it, i) {
+      var parts = [title(it)];
+      var f = fill(it); if (f) parts.push(f);
+      if (it.inspiredBy) parts.push('≈ ' + it.inspiredBy);
+      parts.push(inr(it.price));
+      lines.push((i + 1) + '. ' + parts.join(' · '));
+    });
+    var deals = $('deals').value.trim();
+    if (deals) { lines.push('', '*Deals in this post*', deals); }
+    var terms = [];
+    if (st.minimumOrder) terms.push('Minimum order ' + inr(st.minimumOrder) + ' for decants.');
+    if (st.freeShippingFrom) terms.push('Free shipping on decant orders above ' + inr(st.freeShippingFrom) + ', or multiple-bottle purchases.');
+    if (terms.length) lines.push('', terms.join(' '));
+    lines.push('', 'Everything available: ' + SITE_URL, 'Message me to order!');
+    return lines.join('\n');
+  }
+  function refreshMessage() {
+    if (S.msgEdited) return;
+    $('message').value = buildMessage();
+  }
+
+  /* ---------- Images ---------- */
+  function loadBlob(url) {
+    url = imgUrl(url);
+    if (!S.blobs[url]) {
+      S.blobs[url] = fetch(url, { mode: 'cors' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      });
+      S.blobs[url].catch(function () { delete S.blobs[url]; });
+    }
+    return S.blobs[url];
+  }
+  function blobToImage(blob) {
+    return new Promise(function (res, rej) {
+      var u = URL.createObjectURL(blob), im = new Image();
+      im.onload = function () { res(im); };
+      im.onerror = function () { URL.revokeObjectURL(u); rej(new Error('bad image')); };
+      im.src = u;
+    });
+  }
+  function photoSet(it) {
+    // First photo = front, second = back (the Order column in the Photos tab).
+    var ph = (it.photos || []).slice(0, 2);
+    return Promise.all(ph.map(function (p) {
+      return loadBlob(p.full).then(function (b) { return blobToImage(b).then(function (im) { return { blob: b, img: im }; }); })
+        .catch(function () { return null; });
+    }));
+  }
+
+  /* ---------- Collage ---------- */
+  function cover(ctx, img, x, y, w, h) {
+    var s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+    var sw = w / s, sh = h / s;
+    ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+  }
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function fitText(ctx, text, maxW) {
+    if (ctx.measureText(text).width <= maxW) return text;
+    while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+    return text + '…';
+  }
+  function drawCollage(entries, page, pages) {
+    var rows = Math.ceil(entries.length / COLS);
+    var tileH = PHOTO + CAPTION_H;
+    var H = HEADER_H + rows * tileH + (rows - 1) * GAP + FOOTER_H + PAD;
+    var c = document.createElement('canvas'); c.width = W; c.height = H;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#EDF0F3'; ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = '#1B2430'; ctx.textBaseline = 'alphabetic';
+    ctx.font = '700 56px Outfit, sans-serif';
+    ctx.fillText(S.settings.storeName || 'Fragrance Declutter', PAD, 88);
+    ctx.font = '500 28px "DM Sans", sans-serif'; ctx.fillStyle = '#556070';
+    var sub = S.settings.tagline || '';
+    if (pages > 1) sub = (sub ? sub + '  ·  ' : '') + 'Part ' + page + ' of ' + pages;
+    ctx.fillText(sub, PAD, 128);
+
+    entries.forEach(function (e, i) {
+      var col = i % COLS, row = Math.floor(i / COLS);
+      var x = PAD + col * (TILE_W + GAP), y = HEADER_H + row * (tileH + GAP);
+      ctx.save(); roundRect(ctx, x, y, TILE_W, tileH, 22); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.clip();
+      var shots = e.shots.filter(Boolean);
+      if (shots.length >= 2) {
+        cover(ctx, shots[0].img, x, y, PHOTO, PHOTO);
+        cover(ctx, shots[1].img, x + PHOTO + 12, y, PHOTO, PHOTO);
+      } else if (shots.length === 1) {
+        ctx.fillStyle = '#E3E8EE'; ctx.fillRect(x, y, TILE_W, PHOTO);
+        cover(ctx, shots[0].img, x + (TILE_W - PHOTO) / 2, y, PHOTO, PHOTO);
+      } else {
+        ctx.fillStyle = '#E3E8EE'; ctx.fillRect(x, y, TILE_W, PHOTO);
+      }
+      ctx.restore();
+
+      var it = e.item, ty = y + PHOTO;
+      ctx.fillStyle = '#556070'; ctx.font = '500 24px "DM Sans", sans-serif';
+      ctx.fillText(fitText(ctx, [it.brand, fill(it)].filter(Boolean).join('  ·  '), TILE_W - 230), x + 22, ty + 42);
+      ctx.fillStyle = '#1B2430'; ctx.font = '700 34px Outfit, sans-serif';
+      ctx.fillText(fitText(ctx, it.name || '', TILE_W - 230), x + 22, ty + 84);
+      if (it.inspiredBy) {
+        ctx.fillStyle = '#556070'; ctx.font = '400 22px "DM Sans", sans-serif';
+        ctx.fillText(fitText(ctx, '≈ ' + it.inspiredBy, TILE_W - 230), x + 22, ty + 116);
+      }
+      ctx.font = '700 36px Outfit, sans-serif';
+      var price = inr(it.price), pw = ctx.measureText(price).width + 36;
+      roundRect(ctx, x + TILE_W - pw - 20, ty + 38, pw, 58, 16); ctx.fillStyle = '#1B2430'; ctx.fill();
+      ctx.fillStyle = '#FFFFFF'; ctx.fillText(price, x + TILE_W - pw - 2, ty + 80);
+    });
+
+    ctx.fillStyle = '#556070'; ctx.font = '600 28px "DM Sans", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Full list and ordering: ' + SITE_URL.replace(/^https?:\/\//, ''), W / 2, H - PAD - 10);
+    return c;
+  }
+  function canvasBlob(c) { return new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.9); }); }
+
+  var renderToken = 0;
+  function buildCollages() {
+    var items = pickedItems();
+    var token = ++renderToken;
+    return Promise.all(items.map(function (it) { return photoSet(it).then(function (shots) { return { item: it, shots: shots }; }); }))
+      .then(function (entries) {
+        if (token !== renderToken) return null;
+        return document.fonts.ready.then(function () {
+          var pages = Math.ceil(entries.length / ITEMS_PER_COLLAGE), canvases = [];
+          for (var p = 0; p < pages; p++) canvases.push(drawCollage(entries.slice(p * ITEMS_PER_COLLAGE, (p + 1) * ITEMS_PER_COLLAGE), p + 1, pages));
+          return { entries: entries, canvases: canvases };
+        });
+      });
+  }
+
+  var previewTimer = null;
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    var items = pickedItems();
+    if (!items.length) { $('preview').innerHTML = '<div class="empty">Pick fragrances to see the collage.</div>'; $('collageInfo').textContent = ''; return; }
+    $('collageInfo').textContent = 'building…';
+    previewTimer = setTimeout(function () {
+      buildCollages().then(function (r) {
+        if (!r) return;
+        $('preview').innerHTML = '';
+        r.canvases.forEach(function (c) { var im = new Image(); im.alt = 'Collage preview'; im.src = c.toDataURL('image/jpeg', 0.7); $('preview').appendChild(im); });
+        var n = r.canvases.length;
+        $('collageInfo').textContent = n === 1 ? '1 image' : n + ' images (' + ITEMS_PER_COLLAGE + ' per image)';
+        var missing = r.entries.filter(function (e) { return e.shots.filter(Boolean).length < 2; }).map(function (e) { return title(e.item); });
+        notice(missing.length ? 'Front and back not both available for: ' + missing.join(', ') + '. Add their photos in the sheet (or AppSheet) and reload this page.' : '');
+      });
+    }, 350);
+  }
+
+  /* ---------- Download ---------- */
+  function download() {
+    var items = pickedItems();
+    if (!items.length || S.busy) return;
+    if (!window.JSZip) { notice('The zip tool didn’t load. Check your connection and reload.'); return; }
+    S.busy = true; $('downloadBtn').disabled = true; $('downloadBtn').textContent = 'Preparing…';
+    var date = new Date().toISOString().slice(0, 10);
+    var folder = 'declutter-post-' + date;
+    buildCollages().then(function (r) {
+      var zip = new JSZip(), root = zip.folder(folder), photos = root.folder('photos');
+      return Promise.all(r.canvases.map(canvasBlob)).then(function (blobs) {
+        blobs.forEach(function (b, i) { root.file(blobs.length === 1 ? 'collage.jpg' : 'collage-' + (i + 1) + '.jpg', b); });
+        r.entries.forEach(function (e, i) {
+          var base = String(i + 1).padStart(2, '0') + '-' + slug(title(e.item));
+          var labels = ['front', 'back'];
+          e.shots.forEach(function (s, j) { if (s) photos.file(base + '-' + labels[j] + '.jpg', s.blob); });
+        });
+        root.file('message.txt', $('message').value);
+        return zip.generateAsync({ type: 'blob' });
+      });
+    }).then(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = folder + '.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+    }).catch(function () {
+      notice('Something went wrong building the folder. Check your connection and try again.');
+    }).then(function () {
+      S.busy = false; update();
+    });
+  }
+
+  /* ---------- Wiring ---------- */
+  function update() {
+    var n = S.picked.length;
+    $('pickedCount').textContent = n + ' picked';
+    $('barTitle').textContent = n ? n + (n === 1 ? ' fragrance' : ' fragrances') + ' picked' : 'Nothing picked yet';
+    $('downloadBtn').disabled = !n || S.busy;
+    if (!S.busy) $('downloadBtn').textContent = 'Download folder';
+    refreshMessage();
+  }
+
+  $('list').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-id'); if (!id) return;
+    var i = S.picked.indexOf(id);
+    if (e.target.checked && i === -1) S.picked.push(id);
+    if (!e.target.checked && i !== -1) S.picked.splice(i, 1);
+    update(); schedulePreview();
+  });
+  $('search').addEventListener('input', function (e) { S.query = e.target.value; renderList(); });
+  $('clearBtn').addEventListener('click', function () { S.picked = []; renderList(); update(); schedulePreview(); notice(''); });
+  $('deals').addEventListener('input', refreshMessage);
+  $('message').addEventListener('input', function () {
+    S.msgEdited = true; $('resetMsgBtn').hidden = false; $('msgState').textContent = 'edited by you';
+  });
+  $('resetMsgBtn').addEventListener('click', function () {
+    S.msgEdited = false; $('resetMsgBtn').hidden = true; $('msgState').textContent = 'updates as you pick'; refreshMessage();
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var t = $('message').value;
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () {
+      $('copyBtn').textContent = 'Copied'; setTimeout(function () { $('copyBtn').textContent = 'Copy message'; }, 1500);
+    }).catch(function () { $('message').select(); });
+  });
+  $('downloadBtn').addEventListener('click', download);
+
+  load();
+})();
+</script>
+</body>
+</html>
