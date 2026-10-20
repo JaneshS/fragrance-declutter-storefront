@@ -121,6 +121,9 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   var TILE_W = (W - PAD * 2 - GAP * (COLS - 1)) / COLS;   // 746
   var PHOTO = (TILE_W - 12) / 2;                           // two photos side by side
   var CAPTION_H = 90, HEADER_H = PAD, FOOTER_H = 0;
+  // Decants: one photo per tile, numbered to match the message, no caption.
+  var DECANTS_PER_COLLAGE = 16;       // grid grows 2x2 -> 3x3 -> 4x4, then a new image
+  var DECANT_GAP = 16;
 
   var S = { items: [], settings: {}, picked: [], query: '', msgEdited: false, blobs: {}, busy: false };
   var $ = function (id) { return document.getElementById(id); };
@@ -301,6 +304,36 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
 
     return c;
   }
+  function isDecant(it) { return String(it.type || '').trim().toLowerCase() === 'decant'; }
+  function drawDecantCollage(entries) {
+    var n = entries.length;
+    var cols = n <= 4 ? 2 : n <= 9 ? 3 : 4;
+    var rows = Math.ceil(n / cols);
+    var tileW = (W - PAD * 2 - DECANT_GAP * (cols - 1)) / cols;
+    var tileH = Math.round(tileW * 4 / 3);                  // portrait, so the whole decant fits
+    var H = PAD * 2 + rows * tileH + (rows - 1) * DECANT_GAP;
+    var c = document.createElement('canvas'); c.width = W; c.height = H;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#EDF0F3'; ctx.fillRect(0, 0, W, H);
+    var badge = Math.round(Math.max(44, tileW * 0.15));
+    entries.forEach(function (e, i) {
+      var col = i % cols, row = Math.floor(i / cols);
+      var x = PAD + col * (tileW + DECANT_GAP), y = PAD + row * (tileH + DECANT_GAP);
+      ctx.save(); roundRect(ctx, x, y, tileW, tileH, 18); ctx.fillStyle = '#E3E8EE'; ctx.fill(); ctx.clip();
+      var shot = e.shots.filter(Boolean)[0];
+      if (shot) cover(ctx, shot.img, x, y, tileW, tileH);
+      ctx.restore();
+      // Number badge, top-left
+      var bx = x + 14, by = y + 14;
+      ctx.beginPath(); ctx.arc(bx + badge / 2, by + badge / 2, badge / 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(27,36,48,0.88)'; ctx.fill();
+      ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 ' + Math.round(badge * 0.5) + 'px Outfit, sans-serif';
+      ctx.fillText(String(e.num), bx + badge / 2, by + badge / 2 + 1);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    });
+    return c;
+  }
   function canvasBlob(c) { return new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.9); }); }
 
   var renderToken = 0;
@@ -311,9 +344,20 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
       .then(function (entries) {
         if (token !== renderToken) return null;
         return document.fonts.ready.then(function () {
-          var pages = Math.ceil(entries.length / ITEMS_PER_COLLAGE), canvases = [];
-          for (var p = 0; p < pages; p++) canvases.push(drawCollage(entries.slice(p * ITEMS_PER_COLLAGE, (p + 1) * ITEMS_PER_COLLAGE), p + 1, pages));
-          return { entries: entries, canvases: canvases };
+          entries.forEach(function (e, i) { e.num = i + 1; });   // same numbering as the message
+          var bottles = entries.filter(function (e) { return !isDecant(e.item); });
+          var decants = entries.filter(function (e) { return isDecant(e.item); });
+          var both = bottles.length && decants.length, canvases = [], names = [];
+          function add(list, per, draw, label) {
+            var pages = Math.ceil(list.length / per);
+            for (var p = 0; p < pages; p++) {
+              canvases.push(draw(list.slice(p * per, (p + 1) * per), p + 1, pages));
+              names.push('collage' + (both ? '-' + label : '') + (pages > 1 ? '-' + (p + 1) : '') + '.jpg');
+            }
+          }
+          add(bottles, ITEMS_PER_COLLAGE, drawCollage, 'bottles');
+          add(decants, DECANTS_PER_COLLAGE, drawDecantCollage, 'decants');
+          return { entries: entries, canvases: canvases, names: names, bottles: bottles.length, decants: decants.length };
         });
       });
   }
@@ -330,9 +374,16 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
         $('preview').innerHTML = '';
         r.canvases.forEach(function (c) { var im = new Image(); im.alt = 'Collage preview'; im.src = c.toDataURL('image/jpeg', 0.7); $('preview').appendChild(im); });
         var n = r.canvases.length;
-        $('collageInfo').textContent = n === 1 ? '1 image' : n + ' images (' + ITEMS_PER_COLLAGE + ' per image)';
-        var missing = r.entries.filter(function (e) { return e.shots.filter(Boolean).length < 2; }).map(function (e) { return title(e.item); });
-        notice(missing.length ? 'Front and back not both available for: ' + missing.join(', ') + '. Add their photos in the sheet (or AppSheet) and reload this page.' : '');
+        var parts = [];
+        if (r.bottles) parts.push('bottles ' + ITEMS_PER_COLLAGE + ' per image');
+        if (r.decants) parts.push('decants up to ' + DECANTS_PER_COLLAGE + ' per image');
+        $('collageInfo').textContent = (n === 1 ? '1 image' : n + ' images') + ' · ' + parts.join(', ');
+        var noBack = r.entries.filter(function (e) { return !isDecant(e.item) && e.shots.filter(Boolean).length < 2; }).map(function (e) { return title(e.item); });
+        var noPhoto = r.entries.filter(function (e) { return isDecant(e.item) && !e.shots.filter(Boolean).length; }).map(function (e) { return title(e.item); });
+        var msgs = [];
+        if (noBack.length) msgs.push('Bottles without both front and back photos: ' + noBack.join(', ') + '.');
+        if (noPhoto.length) msgs.push('Decants without a photo: ' + noPhoto.join(', ') + '.');
+        notice(msgs.length ? msgs.join(' ') + ' Add photos in the sheet (or AppSheet) and reload this page.' : '');
       });
     }, 350);
   }
@@ -348,7 +399,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     buildCollages().then(function (r) {
       var zip = new JSZip(), root = zip.folder(folder), photos = root.folder('photos');
       return Promise.all(r.canvases.map(canvasBlob)).then(function (blobs) {
-        blobs.forEach(function (b, i) { root.file(blobs.length === 1 ? 'collage.jpg' : 'collage-' + (i + 1) + '.jpg', b); });
+        blobs.forEach(function (b, i) { root.file(r.names[i], b); });
         r.entries.forEach(function (e, i) {
           var base = String(i + 1).padStart(2, '0') + '-' + slug(title(e.item));
           var labels = ['front', 'back'];
