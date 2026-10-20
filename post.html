@@ -120,7 +120,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   var W = 1600, PAD = 40, GAP = 28, COLS = 2;
   var TILE_W = (W - PAD * 2 - GAP * (COLS - 1)) / COLS;   // 746
   var PHOTO = (TILE_W - 12) / 2;                           // two photos side by side
-  var CAPTION_H = 90, HEADER_H = PAD, FOOTER_H = 80;
+  var CAPTION_H = 90, HEADER_H = PAD, FOOTER_H = 0;
 
   var S = { items: [], settings: {}, picked: [], query: '', msgEdited: false, blobs: {}, busy: false };
   var $ = function (id) { return document.getElementById(id); };
@@ -296,8 +296,6 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
       ctx.fillText(fitText(ctx, line2, textW), x + 20, ty + 70);
     });
 
-    ctx.fillStyle = '#556070'; ctx.font = '600 28px "DM Sans", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Full list and ordering: ' + SITE_URL.replace(/^https?:\/\//, ''), W / 2, H - PAD - 10);
     return c;
   }
   function canvasBlob(c) { return new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.9); }); }
