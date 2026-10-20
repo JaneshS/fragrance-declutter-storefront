@@ -106,7 +106,7 @@ To add perfumes, photos and vouches and to mark things sold from your phone, fol
 
 Open `your-site/post` (for example `declutters.netlify.app/post`). It isn't linked from the shop. Pick the fragrances to feature, type any deals or combos for that post, and tap **Download folder**. You get a zip with:
 
-- `collage.jpg`: each fragrance with its first two photos side by side (front and back, from the **Order** column in Photos), name and price. More than 6 fragrances are split across `collage-1.jpg`, `collage-2.jpg` and so on.
+- `collage.jpg`: each fragrance with its first two photos side by side (front and back, from the **Order** column in Photos), name and price. More than 4 fragrances are split across `collage-1.jpg`, `collage-2.jpg` and so on.
 - `photos/`: every photo on its own, numbered and named `front` or `back`.
 - `message.txt`: the post text, which you can also edit and copy on the page.
 

@@ -116,11 +116,11 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   'use strict';
 
   /* ---------- Collage layout (pixels) ---------- */
-  var ITEMS_PER_COLLAGE = 6;          // more than this starts a second collage image
+  var ITEMS_PER_COLLAGE = 4;          // more than this starts a second collage image
   var W = 1600, PAD = 40, GAP = 28, COLS = 2;
   var TILE_W = (W - PAD * 2 - GAP * (COLS - 1)) / COLS;   // 746
   var PHOTO = (TILE_W - 12) / 2;                           // two photos side by side
-  var CAPTION_H = 132, HEADER_H = 150, FOOTER_H = 90;
+  var CAPTION_H = 90, HEADER_H = PAD, FOOTER_H = 80;
 
   var S = { items: [], settings: {}, picked: [], query: '', msgEdited: false, blobs: {}, busy: false };
   var $ = function (id) { return document.getElementById(id); };
@@ -264,13 +264,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     var ctx = c.getContext('2d');
     ctx.fillStyle = '#EDF0F3'; ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = '#1B2430'; ctx.textBaseline = 'alphabetic';
-    ctx.font = '700 56px Outfit, sans-serif';
-    ctx.fillText(S.settings.storeName || 'Fragrance Declutter', PAD, 88);
-    ctx.font = '500 28px "DM Sans", sans-serif'; ctx.fillStyle = '#556070';
-    var sub = S.settings.tagline || '';
-    if (pages > 1) sub = (sub ? sub + '  ·  ' : '') + 'Part ' + page + ' of ' + pages;
-    ctx.fillText(sub, PAD, 128);
+    ctx.textBaseline = 'alphabetic';
 
     entries.forEach(function (e, i) {
       var col = i % COLS, row = Math.floor(i / COLS);
@@ -288,19 +282,18 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
       }
       ctx.restore();
 
+      // Caption: name on top, brand · fill · inspiration below, price on the right.
       var it = e.item, ty = y + PHOTO;
-      ctx.fillStyle = '#556070'; ctx.font = '500 24px "DM Sans", sans-serif';
-      ctx.fillText(fitText(ctx, [it.brand, fill(it)].filter(Boolean).join('  ·  '), TILE_W - 230), x + 22, ty + 42);
-      ctx.fillStyle = '#1B2430'; ctx.font = '700 34px Outfit, sans-serif';
-      ctx.fillText(fitText(ctx, it.name || '', TILE_W - 230), x + 22, ty + 84);
-      if (it.inspiredBy) {
-        ctx.fillStyle = '#556070'; ctx.font = '400 22px "DM Sans", sans-serif';
-        ctx.fillText(fitText(ctx, '≈ ' + it.inspiredBy, TILE_W - 230), x + 22, ty + 116);
-      }
-      ctx.font = '700 36px Outfit, sans-serif';
-      var price = inr(it.price), pw = ctx.measureText(price).width + 36;
-      roundRect(ctx, x + TILE_W - pw - 20, ty + 38, pw, 58, 16); ctx.fillStyle = '#1B2430'; ctx.fill();
-      ctx.fillStyle = '#FFFFFF'; ctx.fillText(price, x + TILE_W - pw - 2, ty + 80);
+      ctx.font = '700 30px Outfit, sans-serif';
+      var price = inr(it.price), pw = ctx.measureText(price).width + 28;
+      roundRect(ctx, x + TILE_W - pw - 16, ty + 20, pw, 48, 14); ctx.fillStyle = '#1B2430'; ctx.fill();
+      ctx.fillStyle = '#FFFFFF'; ctx.fillText(price, x + TILE_W - pw - 2, ty + 55);
+      var textW = TILE_W - pw - 52;
+      ctx.fillStyle = '#1B2430'; ctx.font = '700 30px Outfit, sans-serif';
+      ctx.fillText(fitText(ctx, it.name || '', textW), x + 20, ty + 40);
+      ctx.fillStyle = '#556070'; ctx.font = '500 20px "DM Sans", sans-serif';
+      var line2 = [it.brand, fill(it), it.inspiredBy ? '≈ ' + it.inspiredBy : ''].filter(Boolean).join('  ·  ');
+      ctx.fillText(fitText(ctx, line2, textW), x + 20, ty + 70);
     });
 
     ctx.fillStyle = '#556070'; ctx.font = '600 28px "DM Sans", sans-serif'; ctx.textAlign = 'center';
