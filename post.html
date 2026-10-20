@@ -130,6 +130,8 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   function inr(n) { return 'Rs. ' + Number(n || 0).toLocaleString('en-IN'); }
   function fill(it) {
     var r = it.remaining, s = it.sizeMl;
+    var m = typeof r === 'string' && r.match(/^(\d+(?:\.\d+)?)\s*ML$/i);   // "30ML" from the sheet
+    if (m) r = Number(m[1]);
     if (typeof r === 'number' && s != null) return r === s ? s + ' ml (full)' : r + '/' + s + ' ml';
     if (r != null && s != null) return r + ' · ' + s + ' ml';
     if (s != null) return s + ' ml';

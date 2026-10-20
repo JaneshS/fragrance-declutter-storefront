@@ -102,6 +102,16 @@ To add perfumes, photos and vouches and to mark things sold from your phone, fol
 2. Add a row on the **Photos** tab (Item ID, the link in **Image**, and **Order**) or on the **Vouches** tab.
 3. Leave **Public URL** blank. The script shares the photo and fills this in the first time the site loads.
 
+## Post Builder (for your group and Reddit posts)
+
+Open `your-site/post` (for example `declutters.netlify.app/post`). It isn't linked from the shop. Pick the fragrances to feature, type any deals or combos for that post, and tap **Download folder**. You get a zip with:
+
+- `collage.jpg`: each fragrance with its first two photos side by side (front and back, from the **Order** column in Photos), name and price. More than 6 fragrances are split across `collage-1.jpg`, `collage-2.jpg` and so on.
+- `photos/`: every photo on its own, numbered and named `front` or `back`.
+- `message.txt`: the post text, which you can also edit and copy on the page.
+
+If you copy this project, set `DATA_URL` and `SITE_URL` at the top of `post.html` too.
+
 ## Troubleshooting
 
 | Problem | Fix |
