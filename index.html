@@ -180,6 +180,12 @@ a.view-btn .ext-arrow { margin-left: -2px; opacity: 0.7; }
 .badge-sale { background: var(--sale); color: #fff; border-radius: 6px; padding: 0 6px; font-size: 10px; font-weight: 700; }
 .price .was { color: var(--muted); font-weight: 500; font-size: 0.8em; margin-right: 4px; }
 .price.on-sale { color: var(--sale); }
+@media (max-width: 420px) {   /* room for the Sale button on small phones */
+  .f-row { gap: 6px; }
+  .f-row .pill.new, .f-row .pill.sale { padding: 0 10px; }
+  .f-row .more-btn { padding: 0 8px; }
+  .f-row .seg button { padding: 0 4px; font-size: 12.5px; }
+}
 .cl-price .was { color: var(--cart-muted); font-weight: 500; font-size: 12px; margin-right: 4px; }
 .seg { flex: 1; display: flex; background: var(--card); border-radius: 20px; padding: 3px; box-shadow: var(--shadow); }
 .seg.inset { background: var(--subtle); box-shadow: none; }
