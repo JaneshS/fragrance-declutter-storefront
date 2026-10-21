@@ -105,6 +105,20 @@ To add perfumes, photos and vouches and to mark things sold from your phone, fol
 2. Add a row on the **Photos** tab (Item ID, the link in **Image**, and **Order**) or on the **Vouches** tab.
 3. Leave **Public URL** blank. The script shares the photo and fills this in the first time the site loads.
 
+## Optional: price drops (sale prices)
+
+To discount something that isn't selling, type the new price in its **Sale Price** column on the Inventory tab. Leave **Price** as it was. The site then:
+
+- strikes through the old price and shows the sale price, with a **-20%**-style badge,
+- shows a **Sale** filter button next to **New**, so buyers can see only price drops,
+- uses the sale price in the cart and the WhatsApp order message.
+
+The Post Builder shows it too: struck-through prices in the message (WhatsApp shows `~Rs. 300~` as crossed out) and a red price tag in bottle collages.
+
+To end a sale, clear the **Sale Price** cell. A sale price that isn't lower than Price is ignored.
+
+**Set up before this feature existed?** Add a column headed `Sale Price` to your Inventory tab (anywhere after the existing columns), then update the script: paste the latest [`apps-script/Code.gs`](../apps-script/Code.gs) into Extensions → Apps Script, save, and publish it with **Deploy → Manage deployments → ✏ → Version: New version → Deploy**.
+
 ## Optional: Google Sheet view for buyers
 
 Some buyers prefer a plain spreadsheet. This makes a separate, view-only Google Sheet that always shows your Available items, so there's nothing to keep in sync, and adds a **Google Sheet** button next to Table and Photos on the site.
@@ -115,7 +129,7 @@ Some buyers prefer a plain spreadsheet. This makes a separate, view-only Google 
 4. In cell **A1** of the new sheet, paste this formula, replacing `YOUR-SHEET-ID`:
 
    ```
-   =QUERY(IMPORTRANGE("YOUR-SHEET-ID","Inventory!A1:O"),"select Col1, Col4, Col5, Col7, Col8, Col9, Col6, Col10, Col11, Col3, Col12, Col13 where Col2 = 'Available' order by Col7, Col4, Col5 label Col1 'ID', Col4 'Brand', Col5 'Fragrance', Col7 'Type', Col8 'Remaining', Col9 'Bottle size', Col6 'Price (Rs.)', Col10 'Inspired by', Col11 'Scent family', Col3 'Category', Col12 'Notes', Col13 'Fragrantica'",1)
+   =QUERY(IMPORTRANGE("YOUR-SHEET-ID","Inventory!A1:P"),"select Col1, Col4, Col5, Col7, Col8, Col9, Col6, Col16, Col10, Col11, Col3, Col12, Col13 where Col2 = 'Available' order by Col7, Col4, Col5 label Col1 'ID', Col4 'Brand', Col5 'Fragrance', Col7 'Type', Col8 'Remaining', Col9 'Bottle size', Col6 'Price (Rs.)', Col16 'Sale price (Rs.)', Col10 'Inspired by', Col11 'Scent family', Col3 'Category', Col12 'Notes', Col13 'Fragrantica'",1)
    ```
 
 5. Cell A1 shows `#REF!`. Hover over it and click **Allow access**. Your list appears.

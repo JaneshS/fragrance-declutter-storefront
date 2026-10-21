@@ -54,6 +54,7 @@ h2 small { font-family: var(--ui); font-weight: 500; font-size: 13px; color: var
 .toggle { height: 44px; border-radius: 12px; }
 .toggle[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); box-shadow: none; }
 .pill.new { background: var(--accent); color: var(--on-accent); }
+.price .was { color: var(--muted); font-weight: 500; font-size: 12px; margin-right: 4px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--subtle); cursor: pointer; }
 .row:first-child { border-top: 0; }
 .row input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
@@ -91,6 +92,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   <div class="search-row">
     <input class="search" id="search" type="search" placeholder="Search brand, name or inspiration" autocomplete="off">
     <button class="btn toggle" type="button" id="newBtn" aria-pressed="false">New</button>
+    <button class="btn toggle" type="button" id="saleBtn" aria-pressed="false" hidden>Sale</button>
   </div>
   <div class="card list" id="list"><div class="empty">Loading your collection…</div></div>
   <div class="row-actions">
@@ -134,7 +136,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   var DECANTS_PER_COLLAGE = 16;       // grid grows 2x2 -> 3x3 -> 4x4, then a new image
   var DECANT_GAP = 16;
 
-  var S = { items: [], settings: {}, picked: [], query: '', newOnly: false, msgEdited: false, blobs: {}, busy: false };
+  var S = { items: [], settings: {}, picked: [], query: '', newOnly: false, saleOnly: false, msgEdited: false, blobs: {}, busy: false };
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- Helpers ---------- */
@@ -175,7 +177,14 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   }
   function apply(d) {
     S.settings = d.settings || {};
-    S.items = (d.items || []).filter(function (it) { return it && it.id; });
+    S.items = (d.items || []).filter(function (it) { return it && it.id; }).map(function (it) {
+      var o = {}; for (var k in it) o[k] = it[k];
+      // Sale Price below Price: sell at the sale price, keep the original to strike through.
+      if (typeof it.salePrice === 'number' && it.salePrice > 0 && it.price && it.salePrice < it.price) { o.wasPrice = it.price; o.price = it.salePrice; }
+      return o;
+    });
+    var anySale = S.items.some(function (it) { return it.wasPrice; });
+    $('saleBtn').hidden = !anySale; if (!anySale) S.saleOnly = false;
     S.picked = S.picked.filter(function (id) { return S.items.some(function (x) { return x.id === id; }); });
     renderList(); update();
   }
@@ -194,12 +203,13 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     var q = S.query.trim().toLowerCase();
     return S.items.filter(function (it) {
       if (S.newOnly && !isNew(it)) return false;
+      if (S.saleOnly && !it.wasPrice) return false;
       return !q || [it.brand, it.name, it.inspiredBy, it.id].join(' ').toLowerCase().indexOf(q) !== -1;
     });
   }
   function renderList() {
     var list = shownItems();
-    if (!list.length) { $('list').innerHTML = '<div class="empty">' + (S.newOnly ? 'Nothing new matches.' : 'No matches.') + '</div>'; return; }
+    if (!list.length) { $('list').innerHTML = '<div class="empty">' + (S.newOnly || S.saleOnly ? 'Nothing matches these filters.' : 'No matches.') + '</div>'; return; }
     $('list').innerHTML = list.map(function (it) {
       var ph = it.photos || [];
       var thumb = ph[0] ? '<img class="thumb" loading="lazy" alt="" src="' + esc(imgUrl(ph[0].thumb)) + '">' : '<div class="thumb"></div>';
@@ -208,7 +218,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
       var meta = [it.type, fill(it), it.inspiredBy ? '≈ ' + it.inspiredBy : ''].filter(Boolean).join(' · ');
       return '<label class="row"><input type="checkbox" data-id="' + esc(it.id) + '"' + (S.picked.indexOf(it.id) !== -1 ? ' checked' : '') + '>' +
         thumb + '<div class="info"><div class="brand">' + esc(it.brand) + '</div><div class="name">' + esc(it.name) + flag + '</div>' +
-        '<div class="meta">' + esc(meta) + '</div></div><div class="price">' + esc(inr(it.price)) + '</div></label>';
+        '<div class="meta">' + esc(meta) + '</div></div><div class="price">' + (it.wasPrice ? '<s class="was">' + esc(inr(it.wasPrice)) + '</s>' : '') + esc(inr(it.price)) + '</div></label>';
     }).join('');
   }
 
@@ -221,7 +231,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
       var parts = [title(it)];
       var f = fill(it); if (f) parts.push(f);
       if (it.inspiredBy) parts.push('≈ ' + it.inspiredBy);
-      parts.push(inr(it.price));
+      parts.push(it.wasPrice ? '~' + inr(it.wasPrice) + '~ ' + inr(it.price) : inr(it.price));   // ~text~ = strike-through on WhatsApp
       lines.push((i + 1) + '. ' + parts.join(' · '));
     });
     var deals = $('deals').value.trim();
@@ -315,9 +325,17 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
       var it = e.item, ty = y + PHOTO;
       ctx.font = '700 30px Outfit, sans-serif';
       var price = inr(it.price), pw = ctx.measureText(price).width + 28;
-      roundRect(ctx, x + TILE_W - pw - 16, ty + 20, pw, 48, 14); ctx.fillStyle = '#1B2430'; ctx.fill();
+      roundRect(ctx, x + TILE_W - pw - 16, ty + 20, pw, 48, 14); ctx.fillStyle = it.wasPrice ? '#B42318' : '#1B2430'; ctx.fill();
       ctx.fillStyle = '#FFFFFF'; ctx.fillText(price, x + TILE_W - pw - 2, ty + 55);
-      var textW = TILE_W - pw - 52;
+      var used = pw;
+      if (it.wasPrice) {   // old price, struck through, just left of the tag
+        ctx.font = '500 22px "DM Sans", sans-serif'; ctx.fillStyle = '#556070';
+        var old = inr(it.wasPrice), ow = ctx.measureText(old).width, ox = x + TILE_W - pw - 28 - ow;
+        ctx.fillText(old, ox, ty + 52);
+        ctx.fillRect(ox - 2, ty + 44, ow + 4, 2);
+        used += ow + 12;
+      }
+      var textW = TILE_W - used - 52;
       ctx.fillStyle = '#1B2430'; ctx.font = '700 30px Outfit, sans-serif';
       ctx.fillText(fitText(ctx, it.name || '', textW), x + 20, ty + 40);
       ctx.fillStyle = '#556070'; ctx.font = '500 20px "DM Sans", sans-serif';
@@ -463,6 +481,9 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   $('search').addEventListener('input', function (e) { S.query = e.target.value; renderList(); });
   $('newBtn').addEventListener('click', function () {
     S.newOnly = !S.newOnly; $('newBtn').setAttribute('aria-pressed', String(S.newOnly)); renderList();
+  });
+  $('saleBtn').addEventListener('click', function () {
+    S.saleOnly = !S.saleOnly; $('saleBtn').setAttribute('aria-pressed', String(S.saleOnly)); renderList();
   });
   $('pickShownBtn').addEventListener('click', function () {
     shownItems().forEach(function (it) { if (S.picked.indexOf(it.id) === -1) S.picked.push(it.id); });

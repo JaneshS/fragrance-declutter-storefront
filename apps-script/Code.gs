@@ -86,6 +86,7 @@ function readItems_(ss) {
       brand: text_(r.brand),
       name: text_(r.name),
       price: number_(r.priceinr),
+      salePrice: number_(r.saleprice),   // optional "Sale Price" column: shown as a price drop
       type: text_(r.type),
       remaining: remaining_(r.remaining),
       sizeMl: number_(r.sizeml),

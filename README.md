@@ -16,6 +16,7 @@ Buyers browse your collection, add items to a cart and tap **Send on WhatsApp**:
   - **Photos:** a photo grid with a full-screen viewer (pinch to zoom, swipe between photos).
   - **Google Sheet** (optional): opens a plain, view-only spreadsheet of what's available, for buyers who prefer a list.
 - **See vouches:** a gallery of thank-you messages from past buyers.
+- **Price drops:** discounted items show the old price struck through, a % off badge, and a **Sale** filter.
 - **Cart:** minimum-order, shipping and discount notes. Before sending, the cart re-checks availability, so nobody orders something that has just sold.
 - **Comfortable on any device:** light and dark mode, and a desktop layout with a side cart.
 
