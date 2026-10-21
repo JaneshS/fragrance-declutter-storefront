@@ -48,7 +48,7 @@ Click a table under **Data** to see its columns. For each column you can change 
 | Column | Type | Settings |
 |---|---|---|
 | ID | Text | **Key** ✔, Required ✔. Initial value: the formula in *Automatic IDs* below. Editable ✘ |
-| Status | Enum | Values: `Available`, `Sold`. Required ✔. Initial value: `"Available"` |
+| Status | Enum | Values: `Available`, `Sold`, `Draft`. Required ✔. Initial value: `"Available"` (choose `Draft` to keep an item hidden while you finish it) |
 | Category | Enum | Values: `Indian houses`, `Middle Eastern houses`, `Designer/Niche` (spelled exactly like that). Required ✔ |
 | Brand | Text | Required ✔. Suggested values: `SORT(UNIQUE(Inventory[Brand]))` |
 | Name | Text | Required ✔, **Label** ✔ (so lists show the perfume's name) |
