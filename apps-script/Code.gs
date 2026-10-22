@@ -34,6 +34,15 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+/* Optional, for a time-based trigger (Triggers → Add trigger → prepareImages, every 10 minutes).
+   Shares new photos and fills in their Public URL ahead of time, so the first visitor after you
+   add a photo doesn't wait for Drive. The site works without it. */
+function prepareImages() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  readPhotos_(ss);
+  try { readVouches_(ss); } catch (err) { /* the Vouches tab is optional */ }
+}
+
 /* Run this from the editor to test and to grant permissions. */
 function testOutput() {
   Logger.log(JSON.stringify(buildData_(null), null, 2));
