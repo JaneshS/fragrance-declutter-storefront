@@ -49,6 +49,17 @@ h2 small { font-family: var(--ui); font-weight: 500; font-size: 13px; color: var
 .card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); }
 .search { width: 100%; height: 44px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--card); box-shadow: var(--shadow); }
 .list { margin-top: 8px; overflow: hidden; }
+.filters { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 34px; padding: 0 12px; border-radius: 17px; border: 0; background: var(--card); box-shadow: var(--shadow); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--strong); color: var(--on-strong); box-shadow: none; }
+.selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.selects select { height: 36px; min-width: 0; border: 0; border-radius: 10px; padding: 0 8px; background: var(--card); color: var(--text); box-shadow: var(--shadow); font: inherit; font-size: 13px; }
+.selects select.active { outline: 2px solid var(--accent); }
+.f-foot { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+.linkish { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 12px; padding: 4px 0; }
+@media (max-width: 420px) { .selects { grid-template-columns: 1fr 1fr; } .selects #famSel { grid-column: 1 / -1; } }
 .search-row { display: flex; gap: 8px; }
 .search-row .search { flex: 1; min-width: 0; }
 .toggle { height: 44px; border-radius: 12px; }
@@ -94,6 +105,30 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     <button class="btn toggle" type="button" id="newBtn" aria-pressed="false">New</button>
     <button class="btn toggle" type="button" id="saleBtn" aria-pressed="false" hidden>Sale</button>
   </div>
+  <div class="filters">
+    <div class="chips" role="group" aria-label="House" data-f="cat">
+      <button type="button" class="chip" data-v="all" aria-pressed="true">All houses</button>
+      <button type="button" class="chip" data-v="Indian houses" aria-pressed="false">Indian</button>
+      <button type="button" class="chip" data-v="Middle Eastern houses" aria-pressed="false">Middle Eastern</button>
+      <button type="button" class="chip" data-v="Designer/Niche" aria-pressed="false">Designer / Niche</button>
+    </div>
+    <div class="chips" role="group" aria-label="Decant or bottle" data-f="type">
+      <button type="button" class="chip" data-v="all" aria-pressed="true">Decants &amp; bottles</button>
+      <button type="button" class="chip" data-v="decant" aria-pressed="false">Decants</button>
+      <button type="button" class="chip" data-v="bottle" aria-pressed="false">Bottles</button>
+    </div>
+    <div class="chips" role="group" aria-label="Original or inspired" data-f="lin">
+      <button type="button" class="chip" data-v="all" aria-pressed="true">Originals &amp; inspired</button>
+      <button type="button" class="chip" data-v="og" aria-pressed="false">Originals</button>
+      <button type="button" class="chip" data-v="insp" aria-pressed="false">Inspired</button>
+    </div>
+    <div class="selects">
+      <select id="brandSel" aria-label="Brand"><option value="">All brands</option></select>
+      <select id="priceSel" aria-label="Price"></select>
+      <select id="famSel" aria-label="Scent family"><option value="">All scent families</option></select>
+    </div>
+    <div class="f-foot"><span id="shownCount"></span><button type="button" class="linkish" id="resetFilters" hidden>Clear filters</button></div>
+  </div>
   <div class="card list" id="list"><div class="empty">Loading your collection…</div></div>
   <div class="row-actions">
     <button class="btn" type="button" id="pickShownBtn">Pick all shown</button>
@@ -136,7 +171,8 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
   var DECANTS_PER_COLLAGE = 16;       // grid grows 2x2 -> 3x3 -> 4x4, then a new image
   var DECANT_GAP = 16;
 
-  var S = { items: [], settings: {}, picked: [], query: '', newOnly: false, saleOnly: false, msgEdited: false, blobs: {}, busy: false };
+  var S = { items: [], settings: {}, picked: [], query: '', newOnly: false, saleOnly: false,
+    f: { cat: 'all', type: 'all', lin: 'all', brand: '', price: '', fam: '' }, msgEdited: false, blobs: {}, busy: false };
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- Helpers ---------- */
@@ -186,7 +222,7 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     var anySale = S.items.some(function (it) { return it.wasPrice; });
     $('saleBtn').hidden = !anySale; if (!anySale) S.saleOnly = false;
     S.picked = S.picked.filter(function (id) { return S.items.some(function (x) { return x.id === id; }); });
-    renderList(); update();
+    fillSelects(); renderList(); update();
   }
 
   /* ---------- Picker ---------- */
@@ -199,17 +235,69 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     var limit = S.settings.newBadgeDays != null ? S.settings.newBadgeDays : 14;
     return days >= 0 && days <= limit;
   }
+  // Same filters as the shop.
+  var PRICES = [
+    { id: '', label: 'Any price', test: function () { return true; } },
+    { id: 'u200', label: 'Under Rs. 200', test: function (p) { return p < 200; } },
+    { id: '200-500', label: 'Rs. 200 – 500', test: function (p) { return p >= 200 && p <= 500; } },
+    { id: '500-1000', label: 'Rs. 500 – 1,000', test: function (p) { return p > 500 && p <= 1000; } },
+    { id: 'o1000', label: 'Over Rs. 1,000', test: function (p) { return p > 1000; } }
+  ];
+  function norm(v) { return String(v || '').trim().toLowerCase(); }
+  function filtersActive() {
+    var f = S.f;
+    return S.newOnly || S.saleOnly || f.cat !== 'all' || f.type !== 'all' || f.lin !== 'all' || !!f.brand || !!f.price || !!f.fam;
+  }
+  function fillSelects() {
+    var brands = {}, fams = {};
+    S.items.forEach(function (it) {
+      if (it.brand) brands[it.brand.trim()] = true;
+      if (it.scentFamily) fams[it.scentFamily.trim()] = true;
+    });
+    function opts(first, list, cur) {
+      return '<option value="">' + first + '</option>' + list.map(function (v) {
+        return '<option value="' + esc(v) + '"' + (norm(v) === norm(cur) ? ' selected' : '') + '>' + esc(v) + '</option>';
+      }).join('');
+    }
+    var sortCI = function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); };
+    $('brandSel').innerHTML = opts('All brands', Object.keys(brands).sort(sortCI), S.f.brand);
+    $('famSel').innerHTML = opts('All scent families', Object.keys(fams).sort(sortCI), S.f.fam);
+    $('priceSel').innerHTML = PRICES.map(function (p) { return '<option value="' + p.id + '"' + (p.id === S.f.price ? ' selected' : '') + '>' + p.label + '</option>'; }).join('');
+  }
+  function syncFilterUI() {
+    document.querySelectorAll('.chips[data-f]').forEach(function (g) {
+      var key = g.getAttribute('data-f');
+      g.querySelectorAll('.chip').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === S.f[key])); });
+    });
+    $('brandSel').classList.toggle('active', !!S.f.brand);
+    $('priceSel').classList.toggle('active', !!S.f.price);
+    $('famSel').classList.toggle('active', !!S.f.fam);
+    $('newBtn').setAttribute('aria-pressed', String(S.newOnly));
+    $('saleBtn').setAttribute('aria-pressed', String(S.saleOnly));
+    $('resetFilters').hidden = !filtersActive();
+  }
   function shownItems() {
-    var q = S.query.trim().toLowerCase();
+    var q = S.query.trim().toLowerCase(), f = S.f;
+    var priceTest = (PRICES.filter(function (p) { return p.id === f.price; })[0] || PRICES[0]).test;
     return S.items.filter(function (it) {
       if (S.newOnly && !isNew(it)) return false;
       if (S.saleOnly && !it.wasPrice) return false;
+      if (f.cat !== 'all' && norm(it.category) !== norm(f.cat)) return false;
+      if (f.type !== 'all' && norm(it.type) !== f.type) return false;
+      if (f.lin === 'og' && it.inspiredBy) return false;
+      if (f.lin === 'insp' && !it.inspiredBy) return false;
+      if (f.brand && norm(it.brand) !== norm(f.brand)) return false;
+      if (f.fam && norm(it.scentFamily) !== norm(f.fam)) return false;
+      if (!priceTest(it.price || 0)) return false;
       return !q || [it.brand, it.name, it.inspiredBy, it.id].join(' ').toLowerCase().indexOf(q) !== -1;
     });
   }
   function renderList() {
     var list = shownItems();
-    if (!list.length) { $('list').innerHTML = '<div class="empty">' + (S.newOnly || S.saleOnly ? 'Nothing matches these filters.' : 'No matches.') + '</div>'; return; }
+    syncFilterUI();
+    var picked = list.filter(function (it) { return S.picked.indexOf(it.id) !== -1; }).length;
+    $('shownCount').textContent = list.length + ' of ' + S.items.length + ' shown' + (picked ? ' · ' + picked + ' of these picked' : '');
+    if (!list.length) { $('list').innerHTML = '<div class="empty">' + (filtersActive() ? 'Nothing matches these filters.' : 'No matches.') + '</div>'; return; }
     $('list').innerHTML = list.map(function (it) {
       var ph = it.photos || [];
       var thumb = ph[0] ? '<img class="thumb" loading="lazy" alt="" src="' + esc(imgUrl(ph[0].thumb)) + '">' : '<div class="thumb"></div>';
@@ -479,6 +567,20 @@ textarea { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; back
     update(); schedulePreview();
   });
   $('search').addEventListener('input', function (e) { S.query = e.target.value; renderList(); });
+  document.querySelectorAll('.chips[data-f]').forEach(function (g) {
+    g.addEventListener('click', function (e) {
+      var b = e.target.closest('.chip'); if (!b) return;
+      S.f[g.getAttribute('data-f')] = b.getAttribute('data-v'); renderList();
+    });
+  });
+  $('brandSel').addEventListener('change', function (e) { S.f.brand = e.target.value; renderList(); });
+  $('priceSel').addEventListener('change', function (e) { S.f.price = e.target.value; renderList(); });
+  $('famSel').addEventListener('change', function (e) { S.f.fam = e.target.value; renderList(); });
+  $('resetFilters').addEventListener('click', function () {
+    S.f = { cat: 'all', type: 'all', lin: 'all', brand: '', price: '', fam: '' };
+    S.newOnly = false; S.saleOnly = false; S.query = ''; $('search').value = '';
+    fillSelects(); renderList();
+  });
   $('newBtn').addEventListener('click', function () {
     S.newOnly = !S.newOnly; $('newBtn').setAttribute('aria-pressed', String(S.newOnly)); renderList();
   });

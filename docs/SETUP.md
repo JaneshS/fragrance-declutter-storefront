@@ -143,7 +143,7 @@ Sold items drop off this list automatically. Draft items never appear.
 
 Open `your-site/post` (for example `my-fragrance-declutter.netlify.app/post`). It's for you, not buyers: it isn't linked from the shop and hidden from search engines, though anyone with the address can open it.
 
-1. **Pick fragrances.** Search, or tap **New** to show only recent listings, then **Pick all shown** to select them all.
+1. **Pick fragrances.** Search, or narrow the list with the same filters as the shop (New, Sale, house, decant or bottle, original or inspired, brand, price and scent family). **Pick all shown** selects everything the filters show.
 2. **Deals and combos (optional).** Type anything you're offering in this post only. It goes into the message as written and doesn't change your site.
 3. **Message.** Builds itself from your picks: name, fill level, inspiration, price, your minimum order and shipping terms, and your site link. You can edit it and tap **Copy message**.
 4. **Download folder.** You get a zip containing:
