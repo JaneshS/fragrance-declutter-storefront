@@ -34,13 +34,42 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/* Optional, for a time-based trigger (Triggers → Add trigger → prepareImages, every 10 minutes).
+/* Optional, for a time-based trigger (Triggers → Add trigger → prepareImages, every 30 minutes).
    Shares new photos and fills in their Public URL ahead of time, so the first visitor after you
-   add a photo doesn't wait for Drive. The site works without it. */
+   add a photo doesn't wait for Drive. The site works without it.
+   Google's servers occasionally answer "a server error occurred, please wait a bit and try again".
+   That is temporary, so this skips quietly and tries again on the next run instead of failing. */
+var DRIVE_LOOKUPS_LEFT = Infinity;   // limits Drive searches per background run (see resolveImage_)
+
 function prepareImages() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  readPhotos_(ss);
-  try { readVouches_(ss); } catch (err) { /* the Vouches tab is optional */ }
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;            // the previous run is still busy
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!photosNeedWork_(ss)) return;         // nothing new: don't touch Drive at all
+    DRIVE_LOOKUPS_LEFT = 15;                  // the rest are picked up on the next run
+    readPhotos_(ss);
+    try { readVouches_(ss); } catch (err) { /* the Vouches tab is optional */ }
+  } catch (err) {
+    if (!isTemporaryGoogleError_(err)) throw err;
+    console.warn('prepareImages: Google hiccup, will try again next run: ' + err.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* True if any photo or vouch has an Image but no Public URL yet. */
+function photosNeedWork_(ss) {
+  return [TABS.photos, TABS.vouches].some(function (tab) {
+    if (!ss.getSheetByName(tab)) return false;
+    var t = readTable_(ss, tab);
+    return t.rows.some(function (r) { return text_(r.image) && !text_(r.publicurl); });
+  });
+}
+
+function isTemporaryGoogleError_(err) {
+  return /server error|try again|timed out|INTERNAL|temporarily|rate|Service invoked too many/i
+    .test(String((err && err.message) || err));
 }
 
 /* Run this from the editor to test and to grant permissions. */
@@ -185,6 +214,8 @@ function resolveImage_(value) {
   var v = text_(value);
   if (!v) return null;
   var file = null;
+  if (DRIVE_LOOKUPS_LEFT <= 0) return null;     // budget used up: next background run continues
+  DRIVE_LOOKUPS_LEFT--;
   try {
     if (/^https?:\/\//i.test(v)) {
       var m = v.match(/\/d\/([-\w]{25,})/) || v.match(/[?&]id=([-\w]{25,})/);
